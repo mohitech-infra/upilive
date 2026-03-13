@@ -201,6 +201,12 @@ export default function AdminPanel() {
         loadTab('support')
     }
 
+    const deleteConversation = async (userId: string) => {
+        if (!window.confirm('Are you sure you want to delete this entire conversation?')) return
+        await supabase.from('support_messages').delete().eq('user_id', userId)
+        loadTab('support')
+    }
+
     const upgradeUser = async (userId: string, planId: string) => {
         await supabase.from('users').update({ plan_id: planId }).eq('id', userId)
         loadTab('users')
@@ -503,6 +509,9 @@ export default function AdminPanel() {
                                             style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 13, fontFamily: 'var(--font-inter)', outline: 'none' }}
                                         />
                                         <button onClick={() => sendReply(userId, userId)} style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '10px 14px', color: '#a855f7', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Send</button>
+                                        <button onClick={() => deleteConversation(userId)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 14px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete Conversation">
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                 </div>
                             )

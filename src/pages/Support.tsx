@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Send, Headphones, Mail, MessageCircle } from 'lucide-react'
+import { ChevronLeft, Send, Headphones, Mail, MessageCircle, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -80,32 +80,44 @@ export default function Support() {
         return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
     }
 
-    return (
-        <div style={{ height: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-inter)', display: 'flex', flexDirection: 'column' }}>
+        const clearChat = async () => {
+            if (!profile || messages.length === 0) return
+            if (!window.confirm('Are you sure you want to clear this entire conversation?')) return
+            setLoading(true)
+            await supabase.from('support_messages').delete().eq('user_id', profile.id)
+            setMessages([])
+            setLoading(false)
+        }
 
-            {/* Header */}
-            <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: 8, padding: '8px', color: '#fff', cursor: 'pointer', display: 'flex' }}>
-                    <ChevronLeft size={20} />
-                </button>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Headphones size={18} color="#22c55e" />
-                </div>
-                <div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Support Chat</div>
-                    <div style={{ fontSize: 11, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} /> Usually responds in 24 hrs
+        return (
+            <div style={{ height: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-inter)', display: 'flex', flexDirection: 'column' }}>
+
+                {/* Header */}
+                <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+                    <button onClick={() => navigate('/dashboard')} style={{ background: 'rgba(255,255,255,0.07)', border: 'none', borderRadius: 8, padding: '8px', color: '#fff', cursor: 'pointer', display: 'flex' }}>
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Headphones size={18} color="#22c55e" />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Support Chat</div>
+                        <div style={{ fontSize: 11, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} /> Usually responds in 24 hrs
+                        </div>
+                    </div>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                        <button onClick={clearChat} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '7px', display: 'flex', color: '#ef4444', cursor: 'pointer' }} title="Clear Conversation">
+                            <Trash2 size={15} />
+                        </button>
+                        <a href="mailto:support@upialert.live" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '7px', display: 'flex', color: '#3b82f6' }}>
+                            <Mail size={15} />
+                        </a>
+                        <a href="https://wa.me/91XXXXXXXXXX" target="_blank" rel="noreferrer" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 8, padding: '7px', display: 'flex', color: '#22c55e' }}>
+                            <MessageCircle size={15} />
+                        </a>
                     </div>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    <a href="mailto:support@upialert.live" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 8, padding: '7px', display: 'flex', color: '#3b82f6' }}>
-                        <Mail size={15} />
-                    </a>
-                    <a href="https://wa.me/91XXXXXXXXXX" target="_blank" rel="noreferrer" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 8, padding: '7px', display: 'flex', color: '#22c55e' }}>
-                        <MessageCircle size={15} />
-                    </a>
-                </div>
-            </div>
 
             {/* Messages */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
