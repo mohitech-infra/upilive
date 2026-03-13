@@ -9,6 +9,8 @@ export interface UpiListenerPlugin {
     checkPermissions(): Promise<{ sms: boolean; notifications: boolean }>;
     /** Request SMS + notification permissions */
     requestPermissions(): Promise<void>;
+    /** Open Android Notification Settings for the user to grant access */
+    openNotificationSettings(): Promise<void>;
     /** Get the unique device token for this user's device */
     getDeviceToken(): Promise<{ token: string }>;
     /** Fired when a UPI payment is detected */

@@ -293,9 +293,9 @@ export default function Login() {
                 {/* Footer */}
                 <div style={{ marginTop: 'auto', paddingTop: 32, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     By continuing, you agree to our{' '}
-                    <span style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline', cursor: 'pointer' }}>Terms of Service</span>
+                    <span onClick={() => window.location.href = '/terms'} style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline', cursor: 'pointer' }}>Terms of Service</span>
                     {' '}& {' '}
-                    <span style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline', cursor: 'pointer' }}>Privacy Policy</span>
+                    <span onClick={() => window.location.href = '/privacy'} style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline', cursor: 'pointer' }}>Privacy Policy</span>
                 </div>
             </div>
         </div>

@@ -17,6 +17,8 @@ import GoLive from './pages/GoLive'
 import SetupGuide from './pages/SetupGuide'
 import Support from './pages/Support'
 import About from './pages/About'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 import { useUpiListener } from './hooks/useUpiListener'
 import './index.css'
 
@@ -69,6 +71,8 @@ function AppRoutes() {
         <Route path="setup-guide" element={<SetupGuide />} />
         <Route path="support" element={<Support />} />
         <Route path="about" element={<About />} />
+        <Route path="terms" element={<Terms />} />
+        <Route path="privacy" element={<Privacy />} />
         <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         <Route path="admin/template-designer" element={<AdminRoute><TemplateDesigner /></AdminRoute>} />
       </Route>

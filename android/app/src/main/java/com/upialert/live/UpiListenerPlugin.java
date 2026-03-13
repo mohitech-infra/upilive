@@ -16,11 +16,24 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@CapacitorPlugin(name = "UpiListener")
+@CapacitorPlugin(
+    name = "UpiListener",
+    permissions = {
+        @Permission(
+            alias = "sms",
+            strings = {
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.READ_SMS
+            }
+        )
+    }
+)
 public class UpiListenerPlugin extends Plugin {
 
     // Singleton so UpiNotificationListener can call back into this plugin
@@ -169,6 +182,19 @@ public class UpiListenerPlugin extends Plugin {
         obj.put("source", source);
         obj.put("raw_text", text.length() > 200 ? text.substring(0, 200) : text);
         return obj;
+    }
+
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        Intent intent = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
+        call.resolve();
+    }
+
+    @PermissionCallback
+    private void smsPermissionCallback(PluginCall call) {
+        checkPermissions(call);
     }
 
     @Override

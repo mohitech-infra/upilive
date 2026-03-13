@@ -39,6 +39,15 @@ export function useUpiListener() {
                 is_active: true,
             }, { onConflict: 'device_token' })
 
+            const perms = await UpiListener.checkPermissions()
+            if (!perms.sms) {
+                await UpiListener.requestPermissions()
+            }
+            if (!perms.notifications) {
+                alert("UPIAlert Live needs Notification Access to read payments from GPay, Paytm, etc.\n\nPlease allow UPIAlert Live on the next screen.")
+                await UpiListener.openNotificationSettings()
+            }
+
             // 3. Start native listeners
             await UpiListener.startListening()
 

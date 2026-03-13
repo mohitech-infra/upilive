@@ -14,6 +14,9 @@ export class UpiListenerWeb extends WebPlugin implements UpiListenerPlugin {
     async requestPermissions(): Promise<void> {
         console.warn('UpiListener: Cannot request native permissions from browser.');
     }
+    async openNotificationSettings(): Promise<void> {
+        console.warn('UpiListener: Cannot open notification settings from browser.');
+    }
     async getDeviceToken(): Promise<{ token: string }> {
         return { token: '' };
     }

@@ -351,8 +351,8 @@ export default function Dashboard() {
                                 { icon: <BookOpen size={18} />, color: '#3b82f6', label: 'Setup Guide', sub: 'OBS & Tasker tutorial', action: () => { setMenuOpen(false); navigate('/setup-guide') } },
                                 { icon: <HeadphonesIcon size={18} />, color: '#22c55e', label: 'Contact Support', sub: 'We reply within 24 hrs', action: () => { setMenuOpen(false); navigate('/support') } },
                                 { icon: <Info size={18} />, color: '#f59e0b', label: 'About UPIAlert', sub: 'Version 1.0 · Made in India 🇮🇳', action: () => { setMenuOpen(false); navigate('/about') } },
-                                { icon: <Shield size={18} />, color: '#6b7280', label: 'Privacy Policy', sub: 'How we handle your data', action: () => { } },
-                                { icon: <FileText size={18} />, color: '#6b7280', label: 'Terms of Service', sub: 'Usage terms & conditions', action: () => { } },
+                                { icon: <Shield size={18} />, color: '#6b7280', label: 'Privacy Policy', sub: 'How we handle your data', action: () => { setMenuOpen(false); navigate('/privacy') } },
+                                { icon: <FileText size={18} />, color: '#6b7280', label: 'Terms of Service', sub: 'Usage terms & conditions', action: () => { setMenuOpen(false); navigate('/terms') } },
                             ].map((item, i) => (
                                 <button
                                     key={i}
