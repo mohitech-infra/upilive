@@ -88,22 +88,20 @@ export default function Dashboard() {
         if (!profile || !testForm.donor_name || !testForm.amount) return
         setTestLoading(true)
         try {
-            // First simulate the web alert via the WebRTC/Realtime channel
+            // Insert only the columns that exist in the transactions table
             const payload = {
                 id: crypto.randomUUID(),
-                vendor_id: profile.id,
+                user_id: profile.id,
                 overlay_token: profile.overlay_token,
-                status: 'COMPLETED',
                 donor_name: testForm.donor_name,
                 amount: parseFloat(testForm.amount),
-                message: testForm.message,
-                upi_id: 'test@upi',
-                bank_ref: 'TEST' + Date.now(),
+                message: testForm.message || null,
                 source: 'Test Alert',
                 triggered_at: new Date().toISOString()
             }
 
-            await supabase.from('transactions').insert([payload])
+            const { error: insertError } = await supabase.from('transactions').insert([payload])
+            if (insertError) console.error('Test alert insert error:', insertError)
 
             setTestForm({ donor_name: '', amount: '', message: '' })
             setSendOpen(false)
