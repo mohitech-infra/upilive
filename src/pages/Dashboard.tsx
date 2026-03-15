@@ -33,8 +33,9 @@ export default function Dashboard() {
         // Fetch broadcast notifications
         supabase.from('app_notifications').select('id,title,message,type,created_at').eq('is_active', true).order('created_at', { ascending: false })
             .then(({ data }) => { if (data) setAppNotifs(data) })
-        // Fetch personal unread notifications (welcome etc.)
-        supabase.from('user_notifications').select('id,title,message,type,created_at').eq('user_id', profile.id).eq('is_read', false).order('created_at', { ascending: false })
+        // Fetch personal unread notifications (welcome etc.) — only last 24 hrs
+        const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        supabase.from('user_notifications').select('id,title,message,type,created_at').eq('user_id', profile.id).eq('is_read', false).gte('created_at', since24h).order('created_at', { ascending: false })
             .then(({ data }) => { if (data) setUserNotifs(data) })
         const fetchData = async () => {
             // Ensure profile has tts_enabled and tts_voice

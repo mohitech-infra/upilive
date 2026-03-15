@@ -25,6 +25,14 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode; color: string }[] =
     { id: 'templates', label: 'Templates', icon: <BookOpen size={16} />, color: '#10b981' },
 ]
 
+// Which tabs each team role can access
+const ROLE_TABS: Record<string, Tab[]> = {
+    support:    ['support'],
+    operations: ['purchases', 'scanners', 'transactions', 'devices'],
+    moderator:  ['users', 'transactions', 'support', 'notifications'],
+    finance:    ['purchases', 'transactions', 'settings'],
+}
+
 const S = {
     card: { background: '#1a1a24', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '14px 16px' } as React.CSSProperties,
     label: { fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1 } as React.CSSProperties,
@@ -35,7 +43,18 @@ const S = {
 export default function AdminPanel() {
     const { profile } = useAuth()
     const navigate = useNavigate()
-    const [tab, setTab] = useState<Tab>('purchases')
+
+    const isOwner = profile?.email === 'anishhhog@gmail.com'
+    const teamRole = profile?.team_role ?? null
+    // Tabs this user is allowed to see
+    const allowedTabs: Tab[] = isOwner
+        ? TABS.map(t => t.id)
+        : teamRole && ROLE_TABS[teamRole]
+            ? ROLE_TABS[teamRole]
+            : TABS.map(t => t.id) // fallback: all tabs for generic admins
+    const visibleTabs = TABS.filter(t => allowedTabs.includes(t.id))
+
+    const [tab, setTab] = useState<Tab>(() => allowedTabs[0] ?? 'purchases')
     const [purchases, setPurchases] = useState<(PlanPurchase & { users?: { display_name?: string; email?: string } })[]>([])
     const [scanners, setScanners] = useState<PaymentScanner[]>([])
     const [users, setUsers] = useState<UserProfile[]>([])
@@ -54,7 +73,7 @@ export default function AdminPanel() {
     const [teamEmail, setTeamEmail] = useState('')
     const [teamPassword, setTeamPassword] = useState('')
     const [teamName, setTeamName] = useState('')
-    const [teamRole, setTeamRole] = useState('support')
+    const [newMemberRole, setNewMemberRole] = useState('support')
     const [teamLoading, setTeamLoading] = useState(false)
     const [teamMsg, setTeamMsg] = useState('')
     const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
@@ -256,7 +275,7 @@ export default function AdminPanel() {
 
             {/* Tab Bar — horizontal scroll */}
             <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', scrollbarWidth: 'none' }}>
-                {TABS.map(t => (
+                {visibleTabs.map(t => (
                     <button
                         key={t.id}
                         onClick={() => setTab(t.id)}
@@ -568,7 +587,7 @@ export default function AdminPanel() {
                                         <input key={i} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.placeholder} type={(f as any).type || 'text'}
                                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: 14, fontFamily: 'var(--font-inter)', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                                     ))}
-                                    <select value={teamRole} onChange={e => setTeamRole(e.target.value)}
+                                    <select value={newMemberRole} onChange={e => setNewMemberRole(e.target.value)}
                                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: 14, fontFamily: 'var(--font-inter)', outline: 'none' }}>
                                         {['support', 'operations', 'moderator', 'finance'].map(r => <option key={r} value={r} style={{ background: '#1a1a24' }}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                                     </select>
@@ -578,10 +597,10 @@ export default function AdminPanel() {
                                         setTeamLoading(true); setTeamMsg('')
                                         try {
                                             const { data: { session } } = await supabase.auth.getSession()
-                                            const res = await fetch(`${(supabase as any).supabaseUrl}/functions/v1/create-team-member`, {
+                                            const res = await fetch(`https://gryucxlpgebaeqxagyoa.supabase.co/functions/v1/create-team-member`, {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                                                body: JSON.stringify({ email: teamEmail, password: teamPassword, name: teamName, role: teamRole })
+                                                body: JSON.stringify({ email: teamEmail, password: teamPassword, name: teamName, role: newMemberRole })
                                             })
                                             const json = await res.json()
                                             if (json.error) setTeamMsg('Error: ' + json.error)

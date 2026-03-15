@@ -24,6 +24,7 @@ export type UserProfile = {
   created_at: string
   tts_enabled?: boolean
   tts_voice?: string
+  team_role?: string | null
 }
 
 export type Plan = {
