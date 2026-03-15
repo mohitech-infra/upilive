@@ -52,9 +52,34 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+import { App as CapacitorApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
+import { useNavigate } from 'react-router-dom'
+
 function AppRoutes() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  
   useUpiListener()   // auto-starts native SMS/notification listener on Android
+
+  // Listen for custom scheme deep links (like upialert://login-callback)
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      CapacitorApp.addListener('appUrlOpen', async (data) => {
+        const urlStr = data.url
+        if (urlStr.includes('upialert://')) {
+          // If Supabase passes a hash with tokens, apply it to window so supabase-js can parse it
+          if (urlStr.includes('#')) {
+            const hash = urlStr.split('#')[1]
+            window.location.hash = hash
+          }
+          // Navigate to dashboard after login callback
+          navigate('/dashboard', { replace: true })
+        }
+      })
+    }
+  }, [navigate])
+
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />

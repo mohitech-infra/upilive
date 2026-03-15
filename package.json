@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/browser": "^8.0.2",
     "@capacitor/core": "^8.1.0",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.98.0",

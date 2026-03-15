@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Mail, Smartphone, ChevronRight } from 'lucide-react'
 
+import { Capacitor } from '@capacitor/core'
+
 type Screen = 'main' | 'email' | 'otp'
 type AuthMode = 'login' | 'signup'
 
@@ -29,9 +31,10 @@ export default function Login() {
     const handleOAuth = async (provider: 'google' | 'facebook') => {
         setLoading(true)
         setError('')
+        const redirectTo = Capacitor.isNativePlatform() ? 'upialert://login-callback' : `${window.location.origin}/dashboard`
         const { error } = await supabase.auth.signInWithOAuth({
             provider,
-            options: { redirectTo: `${window.location.origin}/dashboard` }
+            options: { redirectTo }
         })
         if (error) { setError(error.message); setLoading(false) }
     }
