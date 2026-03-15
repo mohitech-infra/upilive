@@ -65,10 +65,10 @@ export default function Overlay() {
         if (!token) return
 
         const init = async () => {
-            // Get user's TTS settings from users table (active_template is NOT a column on users)
+            // Get user's TTS settings and active template from users table
             const { data: user, error: userErr } = await supabase
                 .from('users')
-                .select('id, tts_enabled, tts_voice')
+                .select('id, tts_enabled, tts_voice, active_template')
                 .eq('overlay_token', token)
                 .single()
 
@@ -79,25 +79,17 @@ export default function Overlay() {
             setTtsEnabled(user.tts_enabled || false)
             if (user.tts_voice) setTtsVoice(user.tts_voice)
 
-            // Fetch the user's active template from user_templates (maybeSingle = no crash if empty)
-            const { data: userTemplate } = await supabase
-                .from('user_templates')
-                .select('template_id')
-                .eq('user_id', user.id)
-                .maybeSingle()
-
-            if (userTemplate?.template_id) {
-                // Try overlay_templates (custom full-code templates)
+            // Try to load the selected active_template from overlay_templates
+            if (user.active_template) {
                 const { data: ovTmpl } = await supabase
                     .from('overlay_templates')
                     .select('*')
-                    .eq('id', userTemplate.template_id)
+                    .eq('id', user.active_template)
                     .maybeSingle()
                 if (ovTmpl) {
                     setActiveTemplate(ovTmpl as OvTemplate)
                 }
             }
-            // If no active template found, overlay still works with built-in default animation
         }
         init()
 
