@@ -110,43 +110,69 @@ export default function Overlay() {
                 filter: `overlay_token=eq.${token}`,
             }, (payload) => {
                 const tx = payload.new as Transaction
-                const item: AlertItem = { ...tx, exiting: false }
-
-                // TTS Announcement
-                if (ttsEnabled) {
-                    const text = `${tx.donor_name} paid ₹${tx.amount}${tx.message ? ` and said ${tx.message}` : ''}`
-
-                    try {
-                        if (window.speechSynthesis) {
-                            const voices = window.speechSynthesis.getVoices()
-                            const exactMatch = voices.find(v => v.name === ttsVoice || v.voiceURI === ttsVoice)
-                            const utterance = new SpeechSynthesisUtterance(text)
-                            if (exactMatch) {
-                                utterance.voice = exactMatch
-                            }
-                            utterance.lang = 'hi-IN'
-                            utterance.rate = 1.0
-                            window.speechSynthesis.speak(utterance)
-                        }
-                    } catch (e) {
-                        console.error("TTS Error:", e)
-                    }
-                }
-
-                // For custom HTML templates, we let IframeAlert handle its own lifecycle.
-                // But for React fallbacks, we manage exiting state.
-                setAlerts(prev => [...prev, item])
-
-                setTimeout(() => {
-                    setAlerts(prev => prev.map(a => a.id === item.id ? { ...a, exiting: true } : a))
-                }, 4500)
-                setTimeout(() => {
-                    setAlerts(prev => prev.filter(a => a.id !== item.id))
-                }, 5000)
+                triggerAlert(tx)
             })
             .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
+        const triggerAlert = (tx: Partial<Transaction>) => {
+            const item = { ...tx, exiting: false } as AlertItem
+
+            // TTS Announcement
+            if (ttsEnabled) {
+                const text = `${tx.donor_name} paid ₹${tx.amount}${tx.message ? ` and said ${tx.message}` : ''}`
+
+                try {
+                    if (window.speechSynthesis) {
+                        const voices = window.speechSynthesis.getVoices()
+                        const exactMatch = voices.find(v => v.name === ttsVoice || v.voiceURI === ttsVoice)
+                        const utterance = new SpeechSynthesisUtterance(text)
+                        if (exactMatch) {
+                            utterance.voice = exactMatch
+                        }
+                        utterance.lang = 'hi-IN'
+                        utterance.rate = 1.0
+                        window.speechSynthesis.speak(utterance)
+                    }
+                } catch (e) {
+                    console.error("TTS Error:", e)
+                }
+            }
+
+            setAlerts(prev => [...prev, item])
+
+            setTimeout(() => {
+                setAlerts(prev => prev.map(a => a.id === item.id ? { ...a, exiting: true } : a))
+            }, 4500)
+            setTimeout(() => {
+                setAlerts(prev => prev.filter(a => a.id !== item.id))
+            }, 5000)
+        }
+
+        let previewInterval: any = null
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('preview') === 'true') {
+            const testTx = {
+                id: `preview-tx-${Date.now()}`,
+                donor_name: 'Preview User',
+                amount: 500,
+                message: "This is a test alert! Overlays are working.",
+                source: 'UPI',
+                triggered_at: new Date().toISOString()
+            }
+            
+            // Trigger one immediately after templates load
+            setTimeout(() => triggerAlert(testTx), 1000)
+            
+            // And trigger repeatedly every 6 seconds
+            previewInterval = setInterval(() => {
+                triggerAlert({ ...testTx, id: `preview-tx-${Date.now()}` })
+            }, 6000)
+        }
+
+        return () => { 
+            supabase.removeChannel(channel) 
+            if (previewInterval) clearInterval(previewInterval)
+        }
     }, [token, ttsEnabled, ttsVoice])
 
     const animKey = ANIMATIONS[activeTemplate?.animation_type ?? 'slide'] ?? 'slideIn'

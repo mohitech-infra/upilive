@@ -517,7 +517,7 @@ export default function Dashboard() {
                             <button onClick={copyOverlayUrl} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                                 <Copy size={14} /> {copiedOverlay ? 'Copied!' : 'Copy URL'}
                             </button>
-                            <button onClick={() => window.open(overlayUrl, '_blank')} style={{ flex: 1, background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '9px', color: '#a855f7', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                            <button onClick={() => window.open(`${overlayUrl}?preview=true`, '_blank')} style={{ flex: 1, background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '9px', color: '#a855f7', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                                 <ExternalLink size={14} /> Preview
                             </button>
                         </div>

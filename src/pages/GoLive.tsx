@@ -165,7 +165,7 @@ export default function GoLive() {
                                 <button onClick={copyOverlay} style={{ flex: 1, background: copiedOverlay ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.07)', border: copiedOverlay ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, color: copiedOverlay ? '#22c55e' : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                                     {copiedOverlay ? <Check size={14} /> : <Copy size={14} />} {copiedOverlay ? 'Copied!' : 'Copy URL'}
                                 </button>
-                                <button onClick={() => window.open(overlayUrl, '_blank')} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '11px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                <button onClick={() => window.open(`${overlayUrl}?preview=true`, '_blank')} style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 10, padding: '11px', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                     <ExternalLink size={14} />
                                 </button>
                             </div>
