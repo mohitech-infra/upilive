@@ -220,7 +220,7 @@ export default function Login() {
                 {/* Referral code applied banner */}
                 {refApplied && (
                     <div style={{ width: '100%', maxWidth: 420, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        🎁 Referral code applied! You'll get 25% off on signup.
+                        🎁 Referral code applied! You'll get 10% off on signup.
                     </div>
                 )}
 

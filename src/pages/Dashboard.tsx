@@ -142,7 +142,7 @@ export default function Dashboard() {
         if (profile.referred_by) { setRefMsg('You already have a referral applied.'); setRefLoading(false); return }
         await supabase.from('users').update({ referred_by: referrer.id }).eq('id', profile.id)
         await supabase.from('referrals').upsert({ referrer_id: referrer.id, referee_id: profile.id, status: 'pending', commission_amount: 0 }, { onConflict: 'referee_id' })
-        setRefMsg('✓ Referral applied! Your friend earns 25% on your plan upgrade.')
+        setRefMsg('✓ Referral applied! Your friend earns 10% on your plan upgrade.')
         setRefLoading(false)
         setTimeout(() => { localStorage.setItem('ref_dismissed', '1'); setRefDismissed(true) }, 2500)
     }
