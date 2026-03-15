@@ -40,12 +40,11 @@ export function useUpiListener() {
             }, { onConflict: 'device_token' })
 
             const perms = await UpiListener.checkPermissions()
-            if (!perms.sms) {
-                await UpiListener.requestPermissions()
-            }
-            if (!perms.notifications) {
-                alert("UPIAlert Live needs Notification Access to read payments from GPay, Paytm, etc.\n\nPlease allow UPIAlert Live on the next screen.")
-                await UpiListener.openNotificationSettings()
+            // Note: PermissionGuard explicitly handles requesting permissions before the app loads.
+            // If we reach here without permissions, it means the user manually revoked them via settings while the app was running.
+            // We just log it; the next app reload will block them via PermissionGuard.
+            if (!perms.sms || !perms.notifications) {
+                console.warn("UpiListener started but missing permissions. This shouldn't happen during normal flow.")
             }
 
             // 3. Start native listeners

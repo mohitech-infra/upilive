@@ -20,6 +20,7 @@ import About from './pages/About'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { useUpiListener } from './hooks/useUpiListener'
+import PermissionGuard from './components/PermissionGuard'
 import './index.css'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -85,7 +86,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <PermissionGuard>
+          <AppRoutes />
+        </PermissionGuard>
       </AuthProvider>
     </BrowserRouter>
   )
