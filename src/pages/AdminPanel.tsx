@@ -212,6 +212,8 @@ export default function AdminPanel() {
         setUploadLoading(false)
     }
 
+    const [deleteChatConfirmId, setDeleteChatConfirmId] = useState<string | null>(null)
+
     const sendReply = async (userId: string, msgKey: string) => {
         const text = replyText[msgKey]?.trim()
         if (!text) return
@@ -221,8 +223,8 @@ export default function AdminPanel() {
     }
 
     const deleteConversation = async (userId: string) => {
-        if (!window.confirm('Are you sure you want to delete this entire conversation?')) return
         await supabase.from('support_messages').delete().eq('user_id', userId)
+        setDeleteChatConfirmId(null)
         loadTab('support')
     }
 
@@ -508,7 +510,7 @@ export default function AdminPanel() {
                             const latest = msgs[0]
                             const userName = (latest as any).users?.display_name ?? userId.slice(0, 8)
                             return (
-                                <div key={userId} style={S.card}>
+                                <div key={userId} style={{ ...S.card, position: 'relative' }}>
                                     <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 10 }}>👤 {userName}</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto', marginBottom: 12 }}>
                                         {[...msgs].reverse().map(m => (
@@ -528,10 +530,29 @@ export default function AdminPanel() {
                                             style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 13, fontFamily: 'var(--font-inter)', outline: 'none' }}
                                         />
                                         <button onClick={() => sendReply(userId, userId)} style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '10px 14px', color: '#a855f7', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Send</button>
-                                        <button onClick={() => deleteConversation(userId)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 14px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete Conversation">
+                                        <button onClick={() => setDeleteChatConfirmId(userId)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '10px 14px', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Delete Conversation">
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
+                                    
+                                    {/* Custom Delete Confirmation Modal */}
+                                    {deleteChatConfirmId === userId && (
+                                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 14, zIndex: 10 }}>
+                                            <div style={{ background: '#1a1a24', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: 20, width: '90%', maxWidth: 320, textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+                                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', margin: '0 auto 16px' }}>
+                                                    <Trash2 size={24} />
+                                                </div>
+                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Delete Conversation?</div>
+                                                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
+                                                    Are you sure you want to permanently delete all messages with this user? This cannot be undone.
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 10 }}>
+                                                    <button onClick={() => setDeleteChatConfirmId(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '10px', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Cancel</button>
+                                                    <button onClick={() => deleteConversation(userId)} style={{ flex: 1, background: '#ef4444', border: 'none', borderRadius: 8, padding: '10px', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Delete Chat</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )
                         })}
