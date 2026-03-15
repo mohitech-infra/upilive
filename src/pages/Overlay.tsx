@@ -178,7 +178,7 @@ export default function Overlay() {
     const animKey = ANIMATIONS[activeTemplate?.animation_type ?? 'slide'] ?? 'slideIn'
 
     return (
-        <div style={{ background: 'transparent', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'flex-start', padding: '40px', gap: 12 }}>
+        <div style={{ background: 'transparent', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '40px', gap: 12 }}>
             <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@700&display=swap');
         @keyframes slideIn { from { transform: translateY(60px) scale(0.9); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
