@@ -62,12 +62,16 @@ function AppRoutes() {
   
   useUpiListener()   // auto-starts native SMS/notification listener on Android
 
-  // Listen for custom scheme deep links (like upialert://login-callback)
+  // Listen for custom scheme deep links (like com.upialert.live://login-callback)
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       CapacitorApp.addListener('appUrlOpen', async (data) => {
         const urlStr = data.url
-        if (urlStr.includes('upialert://')) {
+        if (urlStr.includes('com.upialert.live://')) {
+          const { Browser } = await import('@capacitor/browser')
+          // Close the Chrome Custom Tab that was opened by Login.tsx
+          await Browser.close()
+
           // If Supabase passes a hash with tokens, apply it to window so supabase-js can parse it
           if (urlStr.includes('#')) {
             const hash = urlStr.split('#')[1]

@@ -31,12 +31,27 @@ export default function Login() {
     const handleOAuth = async (provider: 'google' | 'facebook') => {
         setLoading(true)
         setError('')
-        const redirectTo = Capacitor.isNativePlatform() ? 'upialert://login-callback' : `${window.location.origin}/dashboard`
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: { redirectTo }
-        })
-        if (error) { setError(error.message); setLoading(false) }
+        
+        if (Capacitor.isNativePlatform()) {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: { 
+                    redirectTo: 'com.upialert.live://login-callback',
+                    skipBrowserRedirect: true 
+                }
+            })
+            if (error) { setError(error.message); setLoading(false); return }
+            if (data?.url) {
+                const { Browser } = await import('@capacitor/browser')
+                await Browser.open({ url: data.url })
+            }
+        } else {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: { redirectTo: `${window.location.origin}/dashboard` }
+            })
+            if (error) { setError(error.message); setLoading(false) }
+        }
     }
 
     const handleEmailAuth = async (e: React.FormEvent) => {
