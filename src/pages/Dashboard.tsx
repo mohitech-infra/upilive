@@ -38,33 +38,34 @@ export default function Dashboard() {
         supabase.from('user_notifications').select('id,title,message,type,created_at').eq('user_id', profile.id).eq('is_read', false).gte('created_at', since24h).order('created_at', { ascending: false })
             .then(({ data }) => { if (data) setUserNotifs(data) })
         const fetchData = async () => {
-            // Ensure profile has tts_enabled and tts_voice
-            const { data: updatedProfile, error } = await supabase.from('users').select('*, tts_enabled, tts_voice').eq('id', profile.id).single()
-            if (error) {
-                console.error("Error fetching updated profile for TTS:", error)
-                // Continue with existing profile if fetch fails
-            } else if (updatedProfile) {
-                // Update the profile in AuthContext if it's different, or just use it locally
-                // For now, we'll assume refreshProfile() would handle this if needed,
-                // or that the profile from useAuth() already has these fields.
-                // If not, a local state for these specific fields might be needed.
-            }
+            // ... profile fetch logic remains ...
+            const { error } = await supabase.from('users').select('*, tts_enabled, tts_voice').eq('id', profile.id).single()
+            if (error) console.error("Error fetching updated profile:", error)
 
+            // Fetch live alerts (excluding tests)
             const { data: txs } = await supabase
                 .from('transactions')
                 .select('*')
                 .eq('user_id', profile.id)
+                .neq('source', 'Test Alert')
                 .order('triggered_at', { ascending: false })
-                .limit(20)
+                .limit(50) // Increased limit to make top donors/earnings slightly more accurate
+
             if (txs) setTransactions(txs as Transaction[])
-            const today = new Date().toISOString().slice(0, 10)
-            const { data: dc } = await supabase
-                .from('daily_alert_counts')
-                .select('count')
+
+            // Fetch today's real alerts count directly instead of relying on daily_alert_counts table
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            const todayIso = today.toISOString()
+
+            const { count } = await supabase
+                .from('transactions')
+                .select('*', { count: 'exact', head: true })
                 .eq('user_id', profile.id)
-                .eq('date', today)
-                .single()
-            if (dc) setTodayCount(dc.count)
+                .neq('source', 'Test Alert')
+                .gte('triggered_at', todayIso)
+
+            if (count !== null) setTodayCount(count)
         }
         fetchData()
     }, [profile])

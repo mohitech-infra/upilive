@@ -8,8 +8,8 @@ export class UpiListenerWeb extends WebPlugin implements UpiListenerPlugin {
     async stopListening(): Promise<void> {
         console.warn('UpiListener: Native plugin not available in browser.');
     }
-    async checkPermissions(): Promise<{ sms: boolean; notifications: boolean }> {
-        return { sms: false, notifications: false };
+    async checkPermissions(): Promise<{ sms: boolean; notifications: boolean; push: boolean }> {
+        return { sms: false, notifications: false, push: false };
     }
     async requestPermissions(): Promise<void> {
         console.warn('UpiListener: Cannot request native permissions from browser.');
