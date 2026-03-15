@@ -62,6 +62,21 @@ export default function Overlay() {
     const [alerts, setAlerts] = useState<AlertItem[]>([])
 
     useEffect(() => {
+        // Force fully transparent overlay (overrides global index.css body background)
+        document.documentElement.style.background = 'transparent'
+        document.body.style.background = 'transparent'
+        const rootNode = document.getElementById('root')
+        if (rootNode) rootNode.style.background = 'transparent'
+
+        return () => {
+             // Revert on unmount (only matters if navigating away in same browser tab)
+             document.documentElement.style.background = ''
+             document.body.style.background = ''
+             if (rootNode) rootNode.style.background = ''
+        }
+    }, [])
+
+    useEffect(() => {
         if (!token) return
 
         const init = async () => {
