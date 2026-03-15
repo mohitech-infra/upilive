@@ -118,7 +118,7 @@ export default function AdminPanel() {
                 const { data } = await supabase.from('users').select('*').order('created_at', { ascending: false }).limit(100)
                 if (data) setUsers(data as UserProfile[])
             } else if (t === 'transactions') {
-                const { data } = await supabase.from('transactions').select('*').order('triggered_at', { ascending: false }).limit(100)
+                const { data } = await supabase.from('transactions').select('*').neq('source', 'Test Alert').order('triggered_at', { ascending: false }).limit(100)
                 if (data) setTransactions(data as Transaction[])
             } else if (t === 'support') {
                 const { data } = await supabase.from('support_messages').select('*, users(display_name)').order('created_at', { ascending: false }).limit(100)
