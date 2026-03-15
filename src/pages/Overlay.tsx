@@ -90,6 +90,28 @@ export default function Overlay() {
                     setActiveTemplate(ovTmpl as OvTemplate)
                 }
             }
+
+            // Realtime listener for user settings (TTS, active template)
+            supabase.channel(`user-updates:${user.id}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'users',
+                    filter: `id=eq.${user.id}`,
+                }, async (payload) => {
+                    const newUser = payload.new
+                    if (newUser.active_template !== user.active_template) {
+                        const { data: newTmpl } = await supabase
+                            .from('overlay_templates')
+                            .select('*')
+                            .eq('id', newUser.active_template)
+                            .maybeSingle()
+                        if (newTmpl) setActiveTemplate(newTmpl as OvTemplate)
+                    }
+                    if (newUser.tts_enabled !== undefined) setTtsEnabled(newUser.tts_enabled)
+                    if (newUser.tts_voice) setTtsVoice(newUser.tts_voice)
+                })
+                .subscribe()
         }
         init()
 
