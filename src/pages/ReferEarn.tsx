@@ -21,8 +21,8 @@ export default function ReferEarn() {
     useEffect(() => {
         if (!profile?.id) return
         const fetchData = async () => {
-            const { data: r } = await supabase.from('referrals').select('*').eq('referrer_id', profile.id).order('created_at', { ascending: false })
-            if (r) setReferrals(r as Referral[])
+            const { data: r } = await supabase.from('referrals').select('*, referee:users!referrals_referee_id_fkey(display_name, email, avatar_url)').eq('referrer_id', profile.id).order('created_at', { ascending: false })
+            if (r) setReferrals(r as any[])
             const { data: w } = await supabase.from('withdrawal_requests').select('*').eq('user_id', profile.id).order('created_at', { ascending: false })
             if (w) setWithdrawals(w as WithdrawalRequest[])
             // Fetch dynamic settings
@@ -33,6 +33,7 @@ export default function ReferEarn() {
                     if (s.key === 'referral_discount_percent') setDiscountPct(Number(s.value))
                 })
             }
+
         }
         fetchData()
     }, [profile])
@@ -216,24 +217,30 @@ export default function ReferEarn() {
                 <div style={{ padding: '0 16px', marginBottom: 20 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Referral History</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {referrals.map((r, i) => (
-                            <div key={r.id} style={{ background: '#1a1a24', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 36, height: 36, borderRadius: 10, background: `${avatarColors[i % avatarColors.length]}22`, color: avatarColors[i % avatarColors.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
-                                    {r.plan_id?.charAt(0)?.toUpperCase() ?? 'U'}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 2 }}>
-                                        {r.plan_id ? `${r.plan_id}` : 'Signed up'}
+                        {referrals.map((r: any, i) => {
+                            const refereeName = r.referee?.display_name || 'User'
+                            const initial = refereeName.charAt(0).toUpperCase()
+                            return (
+                                <div key={r.id} style={{ background: '#1a1a24', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{ width: 36, height: 36, borderRadius: 10, background: `${avatarColors[i % avatarColors.length]}22`, color: avatarColors[i % avatarColors.length], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                                        {r.referee?.avatar_url ? (
+                                            <img src={r.referee.avatar_url} alt={refereeName} style={{ width: '100%', height: '100%', borderRadius: 10, objectFit: 'cover' }} />
+                                        ) : initial}
                                     </div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                        {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · 25% commission
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 2 }}>
+                                            {refereeName}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                            {new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {r.plan_id ? `${r.plan_id}` : 'Signed up'}
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#22c55e' }}>
+                                        +₹{Number(r.commission_amount).toLocaleString('en-IN')}
                                     </div>
                                 </div>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: '#22c55e' }}>
-                                    +₹{Number(r.commission_amount).toLocaleString('en-IN')}
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
             )}
