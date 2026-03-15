@@ -31,6 +31,12 @@ import java.util.regex.Pattern;
                 Manifest.permission.RECEIVE_SMS,
                 Manifest.permission.READ_SMS
             }
+        ),
+        @Permission(
+            alias = "push",
+            strings = {
+                Manifest.permission.POST_NOTIFICATIONS
+            }
         )
     }
 )
@@ -115,19 +121,30 @@ public class UpiListenerPlugin extends Plugin {
     public void checkPermissions(PluginCall call) {
         boolean sms = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.RECEIVE_SMS)
                 == PackageManager.PERMISSION_GRANTED;
+        boolean push = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED;
+                
         // Notification listener check via NotificationListenerService
         String enabledListeners = android.provider.Settings.Secure.getString(
                 getContext().getContentResolver(), "enabled_notification_listeners");
         boolean notif = enabledListeners != null && enabledListeners.contains(getContext().getPackageName());
+        
         JSObject result = new JSObject();
         result.put("sms", sms);
+        result.put("push", push);
         result.put("notifications", notif);
         call.resolve(result);
     }
 
     @PluginMethod
     public void requestPermissions(PluginCall call) {
-        requestPermissionForAlias("sms", call, "smsPermissionCallback");
+        // Request both SMS and Push Notifications
+        requestPermissionForAliases(new String[]{"sms", "push"}, call, "permissionsCallback");
+    }
+
+    @PermissionCallback
+    private void permissionsCallback(PluginCall call) {
+        checkPermissions(call);
     }
 
     @PluginMethod

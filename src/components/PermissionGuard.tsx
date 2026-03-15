@@ -10,6 +10,7 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
     const [checking, setChecking] = useState<boolean>(true)
     const [needsSms, setNeedsSms] = useState<boolean>(false)
     const [needsNotif, setNeedsNotif] = useState<boolean>(false)
+    const [needsPush, setNeedsPush] = useState<boolean>(false)
 
     const checkPerms = async () => {
         if (!Capacitor.isNativePlatform()) {
@@ -24,10 +25,14 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
             
             const smsOk = !!perms.sms
             const notifOk = !!perms.notifications
+            const pushOk = !!perms.push
             
             setNeedsSms(!smsOk)
             setNeedsNotif(!notifOk)
-            setHasPermissions(smsOk && notifOk)
+            setNeedsPush(!pushOk)
+            
+            // We require SMS, Notification Listener, AND Push Notifications to proceed fully
+            setHasPermissions(smsOk && notifOk && pushOk)
         } catch (error) {
             console.error('Failed to check permissions:', error)
             // Fallback to true so we don't permanently brick the app if the plugin fails
@@ -57,13 +62,14 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
         try {
             const { UpiListener } = await import('../plugins/UpiListener/index')
             
-            if (needsSms) {
+            // requestPermissions in the native plugin now requests BOTH SMS and Push Notifications
+            if (needsSms || needsPush) {
                 await UpiListener.requestPermissions()
                 await checkPerms()
             }
             
             if (needsNotif) {
-                // If we still need notif access after potentially granting SMS
+                // If we still need notif access after potentially granting SMS/Push
                 alert("UPIAlert Live needs Notification Access to read payments from GPay, Paytm, PhonePe, etc.\n\nPlease allow UPIAlert Live on the next screen.")
                 await UpiListener.openNotificationSettings()
             }
@@ -134,7 +140,7 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
                         lineHeight: '1.5',
                         marginBottom: '24px'
                     }}>
-                        UPIAlert Live needs access to your <b>SMS</b> and <b>Notifications</b> in order to detect payments from apps like PhonePe, Google Pay, and Paytm.
+                        UPIAlert Live needs access to your <b>SMS</b> and <b>Notifications</b> in order to detect payments from apps like PhonePe, Google Pay, and Paytm, as well as <b>Push Notifications</b> so you can receive alerts from the Admin Panel.
                         <br /><br />
                         You cannot use the application without granting these permissions.
                     </p>
@@ -148,7 +154,7 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
                     </button>
                     
                     <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '16px' }}>
-                        Missing: {[needsSms && "SMS", needsNotif && "Notifications"].filter(Boolean).join(" & ")}
+                        Missing: {[needsSms && "SMS", needsPush && "Push", needsNotif && "Notification Access"].filter(Boolean).join(" & ")}
                     </p>
                 </div>
             </div>

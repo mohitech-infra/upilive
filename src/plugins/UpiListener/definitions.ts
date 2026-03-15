@@ -6,7 +6,7 @@ export interface UpiListenerPlugin {
     /** Stop the listener */
     stopListening(): Promise<void>;
     /** Check current permission status */
-    checkPermissions(): Promise<{ sms: boolean; notifications: boolean }>;
+    checkPermissions(): Promise<{ sms: boolean; notifications: boolean; push: boolean }>;
     /** Request SMS + notification permissions */
     requestPermissions(): Promise<void>;
     /** Open Android Notification Settings for the user to grant access */
