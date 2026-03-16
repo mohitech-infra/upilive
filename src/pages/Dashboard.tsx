@@ -147,7 +147,7 @@ export default function Dashboard() {
         setTimeout(() => { localStorage.setItem('ref_dismissed', '1'); setRefDismissed(true) }, 2500)
     }
 
-    const overlayUrl = profile ? `${['localhost', '127.0.0.1', 'capacitor://'].some(sub => window.location.origin.includes(sub)) ? 'https://upialert.live' : window.location.origin}/overlay/${profile.overlay_token}` : ''
+    const overlayUrl = profile ? `${['localhost', '127.0.0.1', 'capacitor://'].some(sub => window.location.origin.includes(sub)) ? 'https://upialertlive.netlify.app' : window.location.origin}/overlay/${profile.overlay_token}` : ''
 
 
     const totalEarned = transactions.reduce((s, t) => s + Number(t.amount), 0)

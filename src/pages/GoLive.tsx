@@ -22,7 +22,8 @@ export default function GoLive() {
     const [loadingDevice, setLoadingDevice] = useState(true)
 
     const overlayToken = profile?.overlay_token ?? ''
-    const overlayUrl = overlayToken ? `${window.location.origin}/overlay/${overlayToken}` : ''
+    const BASE_URL = ['localhost', '127.0.0.1', 'capacitor://'].some(sub => window.location.origin.includes(sub)) ? 'https://upialertlive.netlify.app' : window.location.origin
+    const overlayUrl = overlayToken ? `${BASE_URL}/overlay/${overlayToken}` : ''
 
     useEffect(() => {
         if (!profile) return

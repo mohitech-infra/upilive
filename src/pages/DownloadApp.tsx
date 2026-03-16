@@ -66,7 +66,7 @@ export default function DownloadApp() {
                 </div>
 
                 {/* Download Action */}
-                <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 24, padding: '40px 20px' }}>
+                <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 24, padding: '40px 20px', marginBottom: 40 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
                         Current Version: 1.0.0
                     </div>
@@ -80,6 +80,24 @@ export default function DownloadApp() {
                     
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 20 }}>
                         Requires Android 10+. Needs Notification & SMS permissions to function.
+                    </div>
+                </div>
+
+                {/* Installation Guide */}
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: '30px 20px', textAlign: 'left', marginBottom: 60 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ShieldCheck size={20} color="#f59e0b" /> Installation Guide
+                    </h3>
+                    <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 16 }}>
+                        Since you are downloading this app directly from our website and not from the Google Play Store, your phone will show a standard <strong>"Unsafe App Blocked"</strong> or <strong>"Play Protect"</strong> warning. This is normal for all downloaded APKs.
+                    </p>
+                    <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: '#fff', lineHeight: 1.8 }}>
+                            <li>Click the downloaded <strong>UPIAlert_Live.apk</strong> file.</li>
+                            <li>If prompted, go to Settings and enable <strong>"Install from Unknown Sources"</strong>.</li>
+                            <li>When the Google Play Protect warning appears, click <strong>"More Details"</strong>.</li>
+                            <li>Click <strong>"Install Anyway"</strong>.</li>
+                        </ol>
                     </div>
                 </div>
             </div>
