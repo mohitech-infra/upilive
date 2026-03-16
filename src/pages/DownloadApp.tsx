@@ -52,7 +52,8 @@ export default function DownloadApp() {
                     {[
                         { icon: <Zap size={20} color="#f59e0b" />, title: 'Real-time Alerts', desc: 'Instant popup on stream within 1s of payment.' },
                         { icon: <ShieldCheck size={20} color="#22c55e" />, title: '100% Secure', desc: 'Uses official Android notifications. No middleman.' },
-                        { icon: <Smartphone size={20} color="#3b82f6" />, title: 'Refer & Earn', desc: 'Invite fellow streamers and earn passive income!' },
+                        { icon: <Smartphone size={20} color="#3b82f6" />, title: 'Android Native', desc: 'Runs silently in background to catch PhonePe & GPay.' },
+                        { icon: <Smartphone size={20} color="#a855f7" />, title: 'Refer & Earn', desc: 'Earn 25% commission on direct referrals, and 10% on their referrals!' },
                     ].map((f, i) => (
                         <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px' }}>
                             <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
