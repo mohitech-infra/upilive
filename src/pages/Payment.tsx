@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Plan, PaymentScanner } from '../lib/supabase'
 import { Copy, Check, ChevronLeft, Shield, Clock } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 
 const PLAN_META: Record<string, { color: string; badge?: string; gradient: string }> = {
     starter: { color: '#22c55e', gradient: 'linear-gradient(135deg, #052e16, #166534)' },
@@ -287,14 +288,35 @@ export default function Payment() {
                     <div style={{ background: '#1a1a24', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '20px', marginBottom: 16, textAlign: 'center' }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: meta.color, letterSpacing: 1, marginBottom: 16 }}>SCAN TO PAY</div>
 
-                        {/* QR Image */}
-                        <div style={{ display: 'inline-block', padding: 10, background: '#fff', borderRadius: 12, marginBottom: 16 }}>
-                            <img
-                                src={scanner.qr_image_url}
-                                alt="UPI QR Code"
-                                style={{ width: 180, height: 180, objectFit: 'contain', display: 'block' }}
-                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                            />
+                        {/* Digital QR Code */}
+                        <div style={{ display: 'inline-block', padding: 14, background: '#fff', borderRadius: 16, marginBottom: 16, boxShadow: `0 0 30px ${meta.color}20` }}>
+                            {(() => {
+                                // Reconstruct or use decoded URI, appending the specific exact charge amount
+                                const baseUri = scanner.upi_url || `upi://pay?pa=${encodeURIComponent(scanner.upi_id)}&pn=${encodeURIComponent(scanner.name)}&cu=INR`
+                                const amount = plan?.price || PLAN_FALLBACK[planId ?? '']?.price || 0
+                                const finalUri = baseUri.includes('?') 
+                                    ? `${baseUri}&am=${amount}`
+                                    : `${baseUri}?am=${amount}`
+
+                                return (
+                                    <QRCodeSVG 
+                                        value={finalUri} 
+                                        size={200}
+                                        level="Q"
+                                        includeMargin={false}
+                                        fgColor="#000000"
+                                        bgColor="#ffffff"
+                                        imageSettings={{
+                                            src: 'https://cdn.iconscout.com/icon/free/png-256/free-upi-logo-icon-download-in-svg-png-gif-file-formats--unified-payments-interface-payment-money-transfer-logos-icons-1747946.png?f=webp',
+                                            x: undefined,
+                                            y: undefined,
+                                            height: 40,
+                                            width: 40,
+                                            excavate: true,
+                                        }}
+                                    />
+                                )
+                            })()}
                         </div>
 
                         {/* UPI ID */}

@@ -21,6 +21,7 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { useUpiListener } from './hooks/useUpiListener'
 import PermissionGuard from './components/PermissionGuard'
+import DownloadApp from './pages/DownloadApp'
 import './index.css'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -86,27 +87,40 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      {/* Always serve the OBS overlay regardless of platform */}
       <Route path="/overlay/:token" element={<Overlay />} />
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="templates" element={<Templates />} />
-        <Route path="voice-settings" element={<VoiceSettings />} />
-        <Route path="pricing" element={<Pricing />} />
-        <Route path="payment/:planId" element={<Payment />} />
-        <Route path="refer" element={<ReferEarn />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="go-live" element={<GoLive />} />
-        <Route path="setup-guide" element={<SetupGuide />} />
-        <Route path="support" element={<Support />} />
-        <Route path="about" element={<About />} />
-        <Route path="terms" element={<Terms />} />
-        <Route path="privacy" element={<Privacy />} />
-        <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-        <Route path="admin/template-designer" element={<AdminRoute><TemplateDesigner /></AdminRoute>} />
-      </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      
+      {/* Route Web Traffic to Download Page */}
+      {!Capacitor.isNativePlatform() ? (
+        <>
+           <Route path="/" element={<DownloadApp />} />
+           <Route path="*" element={<Navigate to="/" replace />} />
+        </>
+      ) : (
+        <>
+          {/* Route Native App Traffic to the Dashboard */}
+          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="voice-settings" element={<VoiceSettings />} />
+            <Route path="pricing" element={<Pricing />} />
+            <Route path="payment/:planId" element={<Payment />} />
+            <Route path="refer" element={<ReferEarn />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="go-live" element={<GoLive />} />
+            <Route path="setup-guide" element={<SetupGuide />} />
+            <Route path="support" element={<Support />} />
+            <Route path="about" element={<About />} />
+            <Route path="terms" element={<Terms />} />
+            <Route path="privacy" element={<Privacy />} />
+            <Route path="admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+            <Route path="admin/template-designer" element={<AdminRoute><TemplateDesigner /></AdminRoute>} />
+          </Route>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </>
+      )}
     </Routes>
   )
 }

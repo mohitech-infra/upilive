@@ -66,6 +66,7 @@ export type PaymentScanner = {
   name: string
   upi_id: string
   qr_image_url: string
+  upi_url?: string | null
   is_active: boolean
   created_at: string
 }

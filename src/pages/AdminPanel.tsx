@@ -57,6 +57,7 @@ export default function AdminPanel() {
     const [tab, setTab] = useState<Tab>(() => allowedTabs[0] ?? 'purchases')
     const [purchases, setPurchases] = useState<(PlanPurchase & { users?: { display_name?: string; email?: string } })[]>([])
     const [scanners, setScanners] = useState<PaymentScanner[]>([])
+    const [scannerRevenue, setScannerRevenue] = useState<Record<string, number>>({})
     const [users, setUsers] = useState<UserProfile[]>([])
     const [transactions, setTransactions] = useState<Transaction[]>([])
     const [supportMsgs, setSupportMsgs] = useState<SupportMsg[]>([])
@@ -113,7 +114,21 @@ export default function AdminPanel() {
                 if (data) setPurchases(data as typeof purchases)
             } else if (t === 'scanners') {
                 const { data } = await supabase.from('payment_scanners').select('*').order('created_at', { ascending: false })
-                if (data) setScanners(data as PaymentScanner[])
+                if (data) {
+                    setScanners(data as PaymentScanner[])
+                    
+                    // Fetch revenue analysis for scanners
+                    const { data: pData } = await supabase.from('plan_purchases').select('scanner_id, amount').eq('status', 'approved')
+                    if (pData) {
+                        const rev: Record<string, number> = {}
+                        pData.forEach(p => {
+                            if (p.scanner_id && p.amount) {
+                                rev[p.scanner_id] = (rev[p.scanner_id] || 0) + Number(p.amount)
+                            }
+                        })
+                        setScannerRevenue(rev)
+                    }
+                }
             } else if (t === 'users') {
                 const { data } = await supabase.from('users').select('*').order('created_at', { ascending: false }).limit(100)
                 if (data) setUsers(data as UserProfile[])
@@ -201,14 +216,54 @@ export default function AdminPanel() {
     const uploadScanner = async () => {
         if (!scannerFile || !scannerName || !scannerUpi) { setUploadMsg('Fill all fields'); return }
         setUploadLoading(true); setUploadMsg('')
+
+        // 1. Attempt to decode the QR code using jsQR
+        let extractedUri = ''
+        try {
+            const bmp = await createImageBitmap(scannerFile)
+            const canvas = document.createElement('canvas')
+            canvas.width = bmp.width
+            canvas.height = bmp.height
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+                ctx.drawImage(bmp, 0, 0)
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                // Import jsqr dynamically so it doesn't inflate the main bundle
+                const jsQR = (await import('jsqr')).default
+                const code = jsQR(imgData.data, imgData.width, imgData.height)
+                if (code && code.data && code.data.toLowerCase().startsWith('upi://')) {
+                    extractedUri = code.data
+                    console.log('Decoded QR successfully:', extractedUri)
+                }
+            }
+        } catch (e) {
+            console.error('QR Decode Error:', e)
+        }
+
+        // If decoding failed or wasn't a UPI link, build a fallback URI
+        if (!extractedUri) {
+             extractedUri = `upi://pay?pa=${encodeURIComponent(scannerUpi)}&pn=${encodeURIComponent(scannerName)}&cu=INR`
+             console.log('Fell back to built URI:', extractedUri)
+        }
+
+        // 2. Upload the original image to Storage (as a backup/reference)
         const ext = scannerFile.name.split('.').pop()
         const path = `scanners/${Date.now()}.${ext}`
         const { error: upErr } = await supabase.storage.from('payment-qr').upload(path, scannerFile, { upsert: true })
         if (upErr) { setUploadMsg('Upload failed: ' + upErr.message); setUploadLoading(false); return }
+        
+        // 3. Save to Database
         const { data: { publicUrl } } = supabase.storage.from('payment-qr').getPublicUrl(path)
-        const { error: dbErr } = await supabase.from('payment_scanners').insert({ name: scannerName, upi_id: scannerUpi, qr_image_url: publicUrl, is_active: false })
+        const { error: dbErr } = await supabase.from('payment_scanners').insert({ 
+            name: scannerName, 
+            upi_id: scannerUpi, 
+            qr_image_url: publicUrl, 
+            upi_url: extractedUri, // Save the decoded or constructed URI
+            is_active: false 
+        })
+        
         if (dbErr) setUploadMsg('DB error: ' + dbErr.message)
-        else { setUploadMsg('✓ Scanner added!'); setScannerName(''); setScannerUpi(''); setScannerFile(null); loadTab('scanners') }
+        else { setUploadMsg('✓ Scanner added & decoded!'); setScannerName(''); setScannerUpi(''); setScannerFile(null); loadTab('scanners') }
         setUploadLoading(false)
     }
 
@@ -394,7 +449,14 @@ export default function AdminPanel() {
                             <div key={s.id} style={{ ...S.card, display: 'flex', gap: 14, alignItems: 'center' }}>
                                 <img src={s.qr_image_url} alt={s.name} style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', background: '#fff', flexShrink: 0 }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{s.name}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{s.name}</div>
+                                        {scannerRevenue[s.id] > 0 && (
+                                            <span style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, padding: '2px 6px', fontSize: 10, fontWeight: 800, color: '#22c55e' }}>
+                                                ₹{scannerRevenue[s.id].toLocaleString('en-IN')}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.upi_id}</div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

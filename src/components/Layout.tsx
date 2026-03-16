@@ -20,7 +20,7 @@ export default function Layout() {
     const { profile } = useAuth()
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)', paddingTop: 'env(safe-area-inset-top)' }}>
             <div className="noise-bg" />
 
             {/* Background Glows based on design */}
