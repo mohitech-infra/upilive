@@ -121,8 +121,12 @@ public class UpiListenerPlugin extends Plugin {
     public void checkPermissions(PluginCall call) {
         boolean sms = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.RECEIVE_SMS)
                 == PackageManager.PERMISSION_GRANTED;
-        boolean push = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS)
-                == PackageManager.PERMISSION_GRANTED;
+                
+        boolean push = true;
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            push = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
                 
         // Notification listener check via NotificationListenerService
         String enabledListeners = android.provider.Settings.Secure.getString(
@@ -138,8 +142,12 @@ public class UpiListenerPlugin extends Plugin {
 
     @PluginMethod
     public void requestPermissions(PluginCall call) {
-        // Request both SMS and Push Notifications
-        requestPermissionForAliases(new String[]{"sms", "push"}, call, "permissionsCallback");
+        // Request both SMS and Push Notifications where applicable
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            requestPermissionForAliases(new String[]{"sms", "push"}, call, "permissionsCallback");
+        } else {
+            requestPermissionForAliases(new String[]{"sms"}, call, "permissionsCallback");
+        }
     }
 
     @PermissionCallback
