@@ -39,6 +39,10 @@ export default function DownloadApp() {
                     UPIAlert <span style={{ color: '#22c55e', WebkitTextFillColor: '#22c55e' }}>Live</span>
                 </h1>
                 
+                <div style={{ display: 'inline-block', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, letterSpacing: 0.5, marginBottom: 24 }}>
+                    🏆 INDIA'S FIRST APP FOR STREAMERS
+                </div>
+
                 <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: 40, lineHeight: 1.6 }}>
                     The ultimate real-time UPI donation alert system for Indian streamers. Free, zero-latency, and custom overlays for OBS.
                 </p>
@@ -48,7 +52,7 @@ export default function DownloadApp() {
                     {[
                         { icon: <Zap size={20} color="#f59e0b" />, title: 'Real-time Alerts', desc: 'Instant popup on stream within 1s of payment.' },
                         { icon: <ShieldCheck size={20} color="#22c55e" />, title: '100% Secure', desc: 'Uses official Android notifications. No middleman.' },
-                        { icon: <Smartphone size={20} color="#3b82f6" />, title: 'Android Native', desc: 'Runs silently in background to catch PhonePe & GPay.' },
+                        { icon: <Smartphone size={20} color="#3b82f6" />, title: 'Refer & Earn', desc: 'Invite fellow streamers and earn passive income!' },
                     ].map((f, i) => (
                         <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px' }}>
                             <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
@@ -79,9 +83,11 @@ export default function DownloadApp() {
                 </div>
             </div>
             
-            <div style={{ position: 'absolute', bottom: 30, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-                Made in India 🇮🇳<br/>
-                © {new Date().getFullYear()} UPIAlert Live. All rights reserved.
+            <div style={{ position: 'absolute', bottom: 30, fontSize: 14, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
+                <div style={{ marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                     Proudly Made in India <img src="https://flagcdn.com/24x18/in.png" alt="India Flag" style={{ borderRadius: 2 }} />
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 400, opacity: 0.6 }}>© {new Date().getFullYear()} UPIAlert Live. All rights reserved.</div>
             </div>
         </div>
     )
