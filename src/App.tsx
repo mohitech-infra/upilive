@@ -65,6 +65,17 @@ function AppRoutes() {
 
   // Listen for custom scheme deep links (like com.upialert.live://login-callback)
   useEffect(() => {
+    // ── Emergency Web Fallback ──
+    // If Supabase redirected to the Netlify Site URL instead of the app schema,
+    // we detect it running in Android mobile browser and manually push them back to the app.
+    if (!Capacitor.isNativePlatform() && window.location.hash.includes('access_token=')) {
+      const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || (window as any).opera)
+      if (isAndroid) {
+        window.location.replace(`com.upialert.live://login-callback${window.location.hash}`)
+        return
+      }
+    }
+
     if (Capacitor.isNativePlatform()) {
       CapacitorApp.addListener('appUrlOpen', async (data) => {
         const urlStr = data.url

@@ -38,8 +38,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="upialert.live" />
-                <data android:scheme="https" android:host="www.upialert.live" />
+                <data android:scheme="https" android:host="upialert-live.netlify.app" />
             </intent-filter>
 
             <!-- ── Custom Scheme for precise Capacitor OAuth redirect ── -->

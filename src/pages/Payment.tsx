@@ -30,6 +30,7 @@ export default function Payment() {
     const navigate = useNavigate()
     const [plan, setPlan] = useState<Plan | null>(null)
     const [scanner, setScanner] = useState<PaymentScanner | null>(null)
+    const [discountPct, setDiscountPct] = useState(0)
     const [utr, setUtr] = useState('')
     const [copiedUpi, setCopiedUpi] = useState(false)
     const [loading, setLoading] = useState(true)
@@ -50,10 +51,19 @@ export default function Payment() {
             }
             const { data: s } = await supabase.from('payment_scanners').select('*').eq('is_active', true).single()
             if (s) setScanner(s as PaymentScanner)
+            
+            if (profile?.referred_by) {
+                const { data: d } = await supabase.from('app_settings').select('value').eq('key', 'referral_discount_percent').single()
+                if (d) setDiscountPct(Number(d.value))
+            }
+            
             setLoading(false)
         }
         init()
-    }, [planId])
+    }, [planId, profile])
+
+    const basePrice = plan?.price ?? PLAN_FALLBACK[planId ?? '']?.price ?? 0
+    const finalPrice = discountPct > 0 ? Math.round(basePrice * (1 - discountPct / 100)) : basePrice
 
     const handleSubmit = async () => {
         if (!utr.trim()) return
@@ -62,12 +72,11 @@ export default function Payment() {
         try {
             if (profile) {
                 const planId_ = plan?.id ?? planId ?? ''
-                const price_ = plan?.price ?? PLAN_FALLBACK[planId ?? '']?.price ?? 0
                 await supabase.from('plan_purchases').insert({
                     user_id: profile.id,
                     plan_id: planId_,
                     scanner_id: scanner?.id ?? null,
-                    amount: price_,
+                    amount: finalPrice,
                     utr_number: utr.trim(),
                     status: 'pending',
                 })
@@ -258,7 +267,8 @@ export default function Payment() {
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>CHECKOUT</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{plan?.name ?? planId} Plan</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                    <span style={{ fontSize: 36, fontWeight: 900, color: '#fff' }}>₹{plan?.price?.toLocaleString('en-IN') ?? '...'}</span>
+                    <span style={{ fontSize: 36, fontWeight: 900, color: '#fff' }}>₹{finalPrice ? finalPrice.toLocaleString('en-IN') : '...'}</span>
+                    {discountPct > 0 && <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', textDecoration: 'line-through' }}>₹{basePrice.toLocaleString('en-IN')}</span>}
                     <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>{plan?.period ?? ''}</span>
                 </div>
             </div>
@@ -270,7 +280,7 @@ export default function Payment() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>How to Pay</div>
                     {[
                         `Open PhonePe / GPay / Paytm`,
-                        `Send exactly ₹${plan?.price?.toLocaleString('en-IN') ?? '...'} to the UPI ID below`,
+                        `Send exactly ₹${finalPrice ? finalPrice.toLocaleString('en-IN') : '...'} to the UPI ID below`,
                         `Copy the UTR / Transaction ID from your app`,
                         `Paste it below and submit — activated in ~30 min`,
                     ].map((step, i) => (
@@ -293,7 +303,7 @@ export default function Payment() {
                             {(() => {
                                 // Reconstruct or use decoded URI, appending the specific exact charge amount
                                 const baseUri = scanner.upi_url || `upi://pay?pa=${encodeURIComponent(scanner.upi_id)}&pn=${encodeURIComponent(scanner.name)}&cu=INR`
-                                const amount = plan?.price || PLAN_FALLBACK[planId ?? '']?.price || 0
+                                const amount = finalPrice || 0
                                 const finalUri = baseUri.includes('?') 
                                     ? `${baseUri}&am=${amount}`
                                     : `${baseUri}?am=${amount}`
@@ -351,7 +361,7 @@ export default function Payment() {
                 <div style={{ background: `${meta.color}10`, border: `1px solid ${meta.color}30`, borderRadius: 14, padding: '14px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>Send Exactly</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: meta.color }}>₹{plan?.price?.toLocaleString('en-IN') ?? '...'}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: meta.color }}>₹{finalPrice ? finalPrice.toLocaleString('en-IN') : '...'}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>Plan</div>

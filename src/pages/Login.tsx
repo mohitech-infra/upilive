@@ -42,7 +42,8 @@ export default function Login() {
             })
             if (error) { setError(error.message); setLoading(false); return }
             if (data?.url) {
-                window.location.href = data.url
+                const { Browser } = await import('@capacitor/browser')
+                await Browser.open({ url: data.url })
             }
         } else {
             const { error } = await supabase.auth.signInWithOAuth({
