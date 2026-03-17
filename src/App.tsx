@@ -85,19 +85,34 @@ function AppRoutes() {
           // Close the Chrome Custom Tab that was opened by Login.tsx
           await Browser.close()
 
-          // Parse the access_token and refresh_token from the hash
-          if (urlStr.includes('#')) {
-            const hashParams = new URLSearchParams(urlStr.split('#')[1])
-            const access_token = hashParams.get('access_token')
-            const refresh_token = hashParams.get('refresh_token')
-            
-            if (access_token && refresh_token) {
-              await supabase.auth.setSession({
-                access_token,
-                refresh_token,
-              })
+          try {
+            // Handle PKCE flow (?code=...)
+            if (urlStr.includes('?')) {
+              const qs = urlStr.split('?')[1].split('#')[0]
+              const queryParams = new URLSearchParams(qs)
+              const code = queryParams.get('code')
+              if (code) {
+                await supabase.auth.exchangeCodeForSession(code)
+              }
             }
+
+            // Parse the access_token and refresh_token from the hash (Implicit flow)
+            if (urlStr.includes('#')) {
+              const hashParams = new URLSearchParams(urlStr.split('#')[1])
+              const access_token = hashParams.get('access_token')
+              const refresh_token = hashParams.get('refresh_token')
+              
+              if (access_token && refresh_token) {
+                await supabase.auth.setSession({
+                  access_token,
+                  refresh_token,
+                })
+              }
+            }
+          } catch (e) {
+             console.error('Session injection failed', e)
           }
+
           // Navigate to dashboard after login callback
           navigate('/dashboard', { replace: true })
         }
