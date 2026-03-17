@@ -76,7 +76,6 @@ function AppRoutes() {
             const refCode = value.split(':')[1]
             if (refCode && !localStorage.getItem('ref_code')) {
               localStorage.setItem('ref_code', refCode)
-              // Clear it so we don't inadvertently keep extracting if they copy something similar
               await Clipboard.write({ string: '' })
             }
           }
@@ -87,13 +86,13 @@ function AppRoutes() {
     }
     checkClipboardForReferral()
 
-    // ── Emergency Web Fallback ──
-    // If Supabase redirected to the Netlify Site URL instead of the app schema,
-    // we detect it running in Android mobile browser and manually push them back to the app.
-    if (!Capacitor.isNativePlatform() && window.location.hash.includes('access_token=')) {
+    // ── Emergency Web Fallback for OAuth Redirects ──
+    // If Supabase falls back to the Web URL (Netlify) instead of `com.upialert.live://`,
+    // the user gets stuck in a browser tab. We detect the auth params on web and redirect to the deep link.
+    if (!Capacitor.isNativePlatform() && (window.location.hash.includes('access_token=') || window.location.search.includes('code='))) {
       const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || (window as any).opera)
       if (isAndroid) {
-        window.location.replace(`com.upialert.live://login-callback${window.location.hash}`)
+        window.location.replace(`com.upialert.live://login-callback${window.location.search}${window.location.hash}`)
         return
       }
     }
@@ -124,18 +123,17 @@ function AppRoutes() {
               const refresh_token = hashParams.get('refresh_token')
               
               if (access_token && refresh_token) {
-                await supabase.auth.setSession({
-                  access_token,
-                  refresh_token,
-                })
+                 await supabase.auth.setSession({ access_token, refresh_token })
               }
             }
           } catch (e) {
              console.error('Session injection failed', e)
           }
 
-          // Navigate to dashboard after login callback
-          navigate('/dashboard', { replace: true })
+          // Force a slight delay to ensure session is saved to local storage before navigating
+          setTimeout(() => {
+              navigate('/dashboard', { replace: true })
+          }, 300)
         }
       })
     }
