@@ -28,6 +28,7 @@ public class UpiNotificationListener extends NotificationListenerService {
         "com.csam.icici.bank.imobile",
         "com.rbl.rblmobileBanking",
         "com.hdfcbank.hdfcMobileBanking",
+        "com.fampay.in",
     };
 
     @Override

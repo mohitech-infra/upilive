@@ -61,6 +61,7 @@ public class UpiListenerPlugin extends Plugin {
                 if (packageName.contains("phonepe")) parsed.put("source", "phonePe");
                 else if (packageName.contains("nbu.paisa")) parsed.put("source", "gPay");
                 else if (packageName.contains("paytm")) parsed.put("source", "paytm");
+                else if (packageName.contains("fampay")) parsed.put("source", "famPay");
             }
             notifyListeners("upiPaymentDetected", parsed);
         }
@@ -172,14 +173,23 @@ public class UpiListenerPlugin extends Plugin {
     // ───── UPI parsing helper ─────
     private JSObject tryParseUpi(String text) {
         // Simple amount extractor
-        Pattern amtPattern = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
+        Pattern amtPattern = Pattern.compile("(?:Rs\\.?|INR|₹|₹\\s?)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
         Matcher amtMatcher = amtPattern.matcher(text);
-        if (!amtMatcher.find()) return null;
+        if (!amtMatcher.find()) {
+            android.util.Log.d("UpiAlert", "No amount matched in text: " + text);
+            return null;
+        }
 
         String amountStr = amtMatcher.group(1).replace(",", "");
         double amount;
-        try { amount = Double.parseDouble(amountStr); } catch (NumberFormatException e) { return null; }
-        if (amount <= 0) return null;
+        try { amount = Double.parseDouble(amountStr); } catch (NumberFormatException e) { 
+            android.util.Log.d("UpiAlert", "Failed to parse amount: " + amountStr);
+            return null; 
+        }
+        if (amount <= 0) {
+            android.util.Log.d("UpiAlert", "Amount is <= 0: " + amountStr);
+            return null;
+        }
 
         // Donor name
         String donorName = "Anonymous";
@@ -199,6 +209,7 @@ public class UpiListenerPlugin extends Plugin {
         else if (text.toLowerCase().contains("google pay") || text.toLowerCase().contains("gpay")) source = "gPay";
         else if (text.toLowerCase().contains("paytm")) source = "paytm";
         else if (text.toLowerCase().contains("bhim")) source = "bhim";
+        else if (text.toLowerCase().contains("fampay") || text.toLowerCase().contains("famapp")) source = "famPay";
 
         JSObject obj = new JSObject();
         obj.put("amount", amount);
@@ -206,6 +217,7 @@ public class UpiListenerPlugin extends Plugin {
         obj.put("upi_ref", upiRef);
         obj.put("source", source);
         obj.put("raw_text", text.length() > 200 ? text.substring(0, 200) : text);
+        android.util.Log.d("UpiAlert", "Parsed match! " + obj.toString());
         return obj;
     }
 
