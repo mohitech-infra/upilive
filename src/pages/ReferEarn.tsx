@@ -38,7 +38,7 @@ export default function ReferEarn() {
         fetchData()
     }, [profile])
 
-    const BASE_URL = ['localhost', '127.0.0.1', 'capacitor://'].some(sub => window.location.origin.includes(sub)) ? 'https://upialertlive.netlify.app' : window.location.origin
+    const BASE_URL = ['localhost', '127.0.0.1', 'capacitor://'].some(sub => window.location.origin.includes(sub)) ? 'https://upialert-live.netlify.app' : window.location.origin
     const referralLink = profile ? `${BASE_URL}/login?ref=${profile.referral_code}` : ''
     const referralCode = profile?.referral_code ?? '--------'
 
