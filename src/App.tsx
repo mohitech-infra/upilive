@@ -22,6 +22,7 @@ import Privacy from './pages/Privacy'
 import { useUpiListener } from './hooks/useUpiListener'
 import PermissionGuard from './components/PermissionGuard'
 import DownloadApp from './pages/DownloadApp'
+import { supabase } from './lib/supabase'
 import './index.css'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,10 +85,18 @@ function AppRoutes() {
           // Close the Chrome Custom Tab that was opened by Login.tsx
           await Browser.close()
 
-          // If Supabase passes a hash with tokens, apply it to window so supabase-js can parse it
+          // Parse the access_token and refresh_token from the hash
           if (urlStr.includes('#')) {
-            const hash = urlStr.split('#')[1]
-            window.location.hash = hash
+            const hashParams = new URLSearchParams(urlStr.split('#')[1])
+            const access_token = hashParams.get('access_token')
+            const refresh_token = hashParams.get('refresh_token')
+            
+            if (access_token && refresh_token) {
+              await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+              })
+            }
           }
           // Navigate to dashboard after login callback
           navigate('/dashboard', { replace: true })
