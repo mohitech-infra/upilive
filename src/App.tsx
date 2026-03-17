@@ -56,6 +56,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 import { App as CapacitorApp } from '@capacitor/app'
 import { Capacitor } from '@capacitor/core'
+import { Clipboard } from '@capacitor/clipboard'
 import { useNavigate } from 'react-router-dom'
 
 function AppRoutes() {
@@ -66,6 +67,26 @@ function AppRoutes() {
 
   // Listen for custom scheme deep links (like com.upialert.live://login-callback)
   useEffect(() => {
+    // ── Check Clipboard for Referral Link ──
+    const checkClipboardForReferral = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { type, value } = await Clipboard.read()
+          if (type === 'text/plain' && value && value.startsWith('UPIALERT-REF:')) {
+            const refCode = value.split(':')[1]
+            if (refCode && !localStorage.getItem('ref_code')) {
+              localStorage.setItem('ref_code', refCode)
+              // Clear it so we don't inadvertently keep extracting if they copy something similar
+              await Clipboard.write({ string: '' })
+            }
+          }
+        } catch (e) {
+          console.log('Clipboard read skipped or failed', e)
+        }
+      }
+    }
+    checkClipboardForReferral()
+
     // ── Emergency Web Fallback ──
     // If Supabase redirected to the Netlify Site URL instead of the app schema,
     // we detect it running in Android mobile browser and manually push them back to the app.

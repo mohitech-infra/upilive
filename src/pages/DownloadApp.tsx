@@ -1,6 +1,20 @@
-import { Download, ShieldCheck, Zap, Smartphone } from 'lucide-react'
+import { Download, ShieldCheck, Zap, Smartphone, CheckCircle2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export default function DownloadApp() {
+    const [refCode, setRefCode] = useState('')
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search)
+        const ref = params.get('ref')
+        if (ref) setRefCode(ref)
+    }, [])
+
+    const handleDownload = () => {
+        if (refCode) {
+            navigator.clipboard.writeText(`UPIALERT-REF:${refCode}`)
+        }
+    }
     return (
         <div style={{
             minHeight: '100vh',
@@ -71,12 +85,19 @@ export default function DownloadApp() {
                         Current Version: 1.0.0
                     </div>
                     
-                    <a href="/UPIAlert_Live.apk" download style={{ textDecoration: 'none' }}>
+                    <a href="/UPIAlert_Live.apk" download style={{ textDecoration: 'none' }} onClick={handleDownload}>
                         <button className="btn btn-primary" style={{ padding: '16px 36px', fontSize: 18, borderRadius: 16, display: 'inline-flex', alignItems: 'center', gap: 12 }}>
                             <Download size={24} />
                             Download APK for Android
                         </button>
                     </a>
+                    
+                    {refCode && (
+                        <div style={{ marginTop: 20, background: 'rgba(34,197,94,0.1)', padding: '12px', borderRadius: 12, border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#22c55e', fontSize: 13, fontWeight: 600 }}>
+                            <CheckCircle2 size={16} />
+                            You were referred! Your discount code will be automatically applied when you open the app.
+                        </div>
+                    )}
                     
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 20 }}>
                         Requires Android 10+. Needs Notification & SMS permissions to function.

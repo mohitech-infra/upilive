@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { ArrowLeft, Save, Play, Loader2 } from 'lucide-react'
+import { Capacitor } from '@capacitor/core'
+import { TextToSpeech } from '@capacitor-community/text-to-speech'
 
 export default function VoiceSettings() {
     const { profile, refreshProfile } = useAuth()
@@ -10,21 +12,31 @@ export default function VoiceSettings() {
 
     const [form, setForm] = useState({
         tts_enabled: false,
-        tts_voice: 'en-US-Standard-A',
+        tts_voice: 'hi-IN', // simplified string format for settings
     })
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
     const [error, setError] = useState('')
     const [playing, setPlaying] = useState(false)
+    const [availableVoices, setAvailableVoices] = useState<any[]>([])
 
     useEffect(() => {
         if (profile) {
             setForm({
                 tts_enabled: profile.tts_enabled ?? false,
-                tts_voice: profile.tts_voice ?? 'en-US-Standard-A',
+                tts_voice: profile.tts_voice ?? 'hi-IN',
             })
         }
     }, [profile])
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            TextToSpeech.getSupportedVoices().then(res => {
+                // Filter for Hindi/English or just return all prioritizing Google/Samsung standard models
+                setAvailableVoices(res.voices.filter(v => v.lang.includes('hi') || v.lang.includes('en-IN') || v.name.toLowerCase().includes('hindi')))
+            }).catch(e => console.log('TTS init error:', e))
+        }
+    }, [])
 
     const handleSave = async () => {
         if (!profile) return
@@ -50,32 +62,46 @@ export default function VoiceSettings() {
         setPlaying(true)
         setError('')
         try {
-            // First, try to use native voices if a specific Microsoft/Google premium voice was requested and available locally
-            if (window.speechSynthesis) {
-                const voices = window.speechSynthesis.getVoices()
-                const exactMatch = voices.find(v => v.voiceURI === form.tts_voice || v.name === form.tts_voice)
+            const sampleText = 'यह एक ध्वनि परीक्षण है, धन्यवाद।'
+            
+            if (Capacitor.isNativePlatform()) {
+                await TextToSpeech.speak({
+                    text: sampleText,
+                    lang: 'hi-IN', // fallbacks to Hindi if voice cannot be matched
+                    rate: 1.0,
+                    pitch: 1.0,
+                    volume: 1.0,
+                    // If the user picked a specific native voice by name
+                    voice: availableVoices.findIndex(v => v.name === form.tts_voice) >= 0 
+                        ? availableVoices.findIndex(v => v.name === form.tts_voice) 
+                        : undefined
+                })
+                setPlaying(false)
+            } else {
+                // Web Fallback
+                if (window.speechSynthesis) {
+                    const voices = window.speechSynthesis.getVoices()
+                    const exactMatch = voices.find(v => v.voiceURI === form.tts_voice || v.name === form.tts_voice)
 
-                window.speechSynthesis.cancel()
-                const utterance = new SpeechSynthesisUtterance('यह एक ध्वनि परीक्षण है, धन्यवाद।')
-                utterance.lang = 'hi-IN'
-                if (exactMatch) {
-                    utterance.voice = exactMatch
+                    window.speechSynthesis.cancel()
+                    const utterance = new SpeechSynthesisUtterance(sampleText)
+                    utterance.lang = 'hi-IN'
+                    if (exactMatch) {
+                        utterance.voice = exactMatch
+                    }
+
+                    utterance.onend = () => setPlaying(false)
+                    utterance.onerror = (e) => {
+                        console.error('SpeechSynthesis Error', e)
+                        setError('Error playing speech synthesis.')
+                        setPlaying(false)
+                    }
+
+                    window.speechSynthesis.speak(utterance)
                 } else {
-                    console.log('Exact voice not found natively natively installed on this OS:', form.tts_voice)
-                    alert(`The selected voice (${form.tts_voice}) is not installed natively on your Operating System. Playing with your system's default Hindi voice instead.`)
-                }
-
-                utterance.onend = () => setPlaying(false)
-                utterance.onerror = (e) => {
-                    console.error('SpeechSynthesis Error', e)
-                    setError('Error playing speech synthesis.')
+                    setError('Your browser does not support text to speech API.')
                     setPlaying(false)
                 }
-
-                window.speechSynthesis.speak(utterance)
-            } else {
-                setError('Your browser does not support text to speech API.')
-                setPlaying(false)
             }
         } catch (err: any) {
             setError('Could not play preview: ' + err.message)
@@ -117,12 +143,22 @@ export default function VoiceSettings() {
                                     onChange={e => setForm(prev => ({ ...prev, tts_voice: e.target.value }))}
                                     style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: 14, outline: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                                 >
-                                    <option value="hi-IN-Standard-A" style={{ color: '#000' }}>Google Hindi (Standard A)</option>
-                                    <option value="hi-IN-Standard-B" style={{ color: '#000' }}>Google Hindi (Standard B)</option>
-                                    <option value="hi-IN-Standard-C" style={{ color: '#000' }}>Google Hindi (Standard C)</option>
-                                    <option value="hi-IN-Standard-D" style={{ color: '#000' }}>Google Hindi (Standard D)</option>
-                                    <option value="Microsoft Swara Online (Natural) - Hindi (India)" style={{ color: '#000' }}>Microsoft Swara (Hindi Female)</option>
-                                    <option value="Microsoft Madhur Online (Natural) - Hindi (India)" style={{ color: '#000' }}>Microsoft Madhur (Hindi Male)</option>
+                                    <option value="hi-IN" style={{ color: '#000' }}>Default OS Hindi Voice</option>
+                                    <option value="en-IN" style={{ color: '#000' }}>Default OS Indian English</option>
+                                    {availableVoices.map((v, i) => (
+                                        <option key={i} value={v.name} style={{ color: '#000' }}>
+                                            {v.name.replace(/([a-z])([A-Z])/g, '$1 $2')} ({v.lang})
+                                        </option>
+                                    ))}
+                                    {/* Web Fallbacks */}
+                                    {availableVoices.length === 0 && (
+                                        <>
+                                            <option value="hi-IN-Standard-A" style={{ color: '#000' }}>Google Hindi (Standard A)</option>
+                                            <option value="hi-IN-Standard-B" style={{ color: '#000' }}>Google Hindi (Standard B)</option>
+                                            <option value="Microsoft Swara Online (Natural) - Hindi (India)" style={{ color: '#000' }}>Microsoft Swara (Hindi Female)</option>
+                                            <option value="Microsoft Madhur Online (Natural) - Hindi (India)" style={{ color: '#000' }}>Microsoft Madhur (Hindi Male)</option>
+                                        </>
+                                    )}
                                 </select>
                                 <button
                                     onClick={playPreview}

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Transaction } from '../lib/supabase'
+import { Capacitor } from '@capacitor/core'
+import { TextToSpeech } from '@capacitor-community/text-to-speech'
 
 type AlertItem = Transaction & { exiting: boolean }
 
@@ -58,7 +60,7 @@ export default function Overlay() {
     type OvTemplate = { id: string; name: string; full_code?: string; gradient: string; icon: string; animation_type?: string }
     const [activeTemplate, setActiveTemplate] = useState<OvTemplate | null>(null)
     const [ttsEnabled, setTtsEnabled] = useState(false)
-    const [ttsVoice, setTtsVoice] = useState('en-US-Standard-A')
+    const [ttsVoice, setTtsVoice] = useState('hi-IN')
     const [alerts, setAlerts] = useState<AlertItem[]>([])
 
     useEffect(() => {
@@ -150,21 +152,41 @@ export default function Overlay() {
             if (ttsEnabled) {
                 const text = `${tx.donor_name} paid ₹${tx.amount}${tx.message ? ` and said ${tx.message}` : ''}`
 
-                try {
-                    if (window.speechSynthesis) {
-                        const voices = window.speechSynthesis.getVoices()
-                        const exactMatch = voices.find(v => v.name === ttsVoice || v.voiceURI === ttsVoice)
-                        const utterance = new SpeechSynthesisUtterance(text)
-                        if (exactMatch) {
-                            utterance.voice = exactMatch
+                const speakTts = async () => {
+                    try {
+                        if (Capacitor.isNativePlatform()) {
+                            // Find matching voice object index to explicitly pass into native options
+                            let targetVoiceIndex: number | undefined = undefined
+                            const { voices } = await TextToSpeech.getSupportedVoices()
+                            const matchingVoiceIdx = voices.findIndex(v => v.name === ttsVoice)
+                            if (matchingVoiceIdx >= 0) targetVoiceIndex = matchingVoiceIdx
+
+                            await TextToSpeech.speak({
+                                text,
+                                lang: 'hi-IN', // base locale fallback
+                                pitch: 1.0,
+                                rate: 1.0,
+                                volume: 1.0,
+                                voice: targetVoiceIndex
+                            })
+                        } else {
+                            if (window.speechSynthesis) {
+                                const voices = window.speechSynthesis.getVoices()
+                                const exactMatch = voices.find(v => v.name === ttsVoice || v.voiceURI === ttsVoice)
+                                const utterance = new SpeechSynthesisUtterance(text)
+                                if (exactMatch) {
+                                    utterance.voice = exactMatch
+                                }
+                                utterance.lang = 'hi-IN'
+                                utterance.rate = 1.0
+                                window.speechSynthesis.speak(utterance)
+                            }
                         }
-                        utterance.lang = 'hi-IN'
-                        utterance.rate = 1.0
-                        window.speechSynthesis.speak(utterance)
+                    } catch (e) {
+                        console.error("TTS Error:", e)
                     }
-                } catch (e) {
-                    console.error("TTS Error:", e)
                 }
+                speakTts()
             }
 
             setAlerts(prev => [...prev, item])
