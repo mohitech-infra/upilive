@@ -246,10 +246,19 @@ export default function ReferEarn() {
                 </div>
             )}
 
-            {/* Note */}
-            <div style={{ padding: '0 16px', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>ⓘ</span>
-                <span>Commissions are paid out monthly via UPI. Minimum withdrawal: ₹100</span>
+            {/* Note & Action */}
+            <div style={{ padding: '0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: 6, flex: 1 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>ⓘ</span>
+                    <span>Commissions are paid out within 24-48 hours via UPI. Minimum withdrawal: ₹100</span>
+                </div>
+                <button
+                    onClick={() => setWithdrawOpen(true)}
+                    disabled={withdrawableAmount < 100}
+                    style={{ background: withdrawableAmount >= 100 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: withdrawableAmount >= 100 ? '#000' : 'var(--text-muted)', cursor: withdrawableAmount >= 100 ? 'pointer' : 'not-allowed', flexShrink: 0, marginLeft: 12 }}
+                >
+                    Withdraw
+                </button>
             </div>
 
             {/* Withdraw Modal */}

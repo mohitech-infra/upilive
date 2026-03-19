@@ -39,6 +39,17 @@ export function useUpiListener() {
                 is_active: true,
             }, { onConflict: 'device_token' })
 
+            // Ping interval to keep device online in Admin Panel
+            const pingInterval = setInterval(async () => {
+                try {
+                    await supabase.from('device_connections')
+                        .update({ last_ping: new Date().toISOString() })
+                        .eq('device_token', token)
+                } catch (e) {
+                    console.error('Ping error:', e)
+                }
+            }, 60 * 1000)
+
             const perms = await UpiListener.checkPermissions()
             // Note: PermissionGuard explicitly handles requesting permissions before the app loads.
             // If we reach here without permissions, it means the user manually revoked them via settings while the app was running.
@@ -73,6 +84,7 @@ export function useUpiListener() {
             })
 
             cleanup = () => {
+                clearInterval(pingInterval)
                 handle.remove()
                 UpiListener.stopListening()
             }

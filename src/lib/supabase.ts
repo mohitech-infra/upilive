@@ -106,3 +106,13 @@ export type WithdrawalRequest = {
   created_at: string
   processed_at: string | null
 }
+
+export type AppUpdate = {
+  id: string
+  version_code: number
+  version_name: string
+  release_notes: string | null
+  apk_url: string
+  is_mandatory: boolean
+  created_at: string
+}

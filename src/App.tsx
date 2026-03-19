@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
@@ -20,6 +20,7 @@ import About from './pages/About'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import { useUpiListener } from './hooks/useUpiListener'
+import { useLiveNotifications } from './hooks/useLiveNotifications'
 import PermissionGuard from './components/PermissionGuard'
 import DownloadApp from './pages/DownloadApp'
 import { supabase } from './lib/supabase'
@@ -64,6 +65,7 @@ function AppRoutes() {
   const navigate = useNavigate()
   
   useUpiListener()   // auto-starts native SMS/notification listener on Android
+  useLiveNotifications() // auto-starts native Supabase Push listeners on Android
 
   // Listen for custom scheme deep links (like com.upialert.live://login-callback)
   useEffect(() => {
@@ -179,12 +181,75 @@ function AppRoutes() {
   )
 }
 
+function AppUpdateChecker() {
+  const [update, setUpdate] = useState<any>(null)
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    
+    const checkForUpdates = async () => {
+      try {
+        const info = await CapacitorApp.getInfo()
+        // Some plugins might use build as the version code
+        const currentVersionCode = parseInt(info.build || '0')
+        
+        const { data } = await supabase
+          .from('app_updates')
+          .select('*')
+          .order('version_code', { ascending: false })
+          .limit(1)
+          .single()
+          
+        if (data && data.version_code > currentVersionCode) {
+          setUpdate(data)
+        }
+      } catch (e) {
+        console.error('Update check failed', e)
+      }
+    }
+    
+    checkForUpdates()
+  }, [])
+
+  if (!update) return null
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: '#1a1a24', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ fontSize: 40, textAlign: 'center', marginBottom: 16 }}>🚀</div>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 8, marginTop: 0 }}>Update Available</h2>
+        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', fontSize: 14, marginBottom: 20, marginTop: 0 }}>Version {update.version_name} is now available.</p>
+        
+        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 16, marginBottom: 20, maxHeight: 150, overflowY: 'auto' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Release Notes:</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'pre-line', lineHeight: 1.5 }}>{update.release_notes || 'No release notes.'}</div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          {!update.is_mandatory && (
+            <button onClick={() => setUpdate(null)} style={{ flex: 1, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,0.05)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}>
+              Later
+            </button>
+          )}
+          <button onClick={async () => {
+             const { Browser } = await import('@capacitor/browser')
+             await Browser.open({ url: update.apk_url })
+          }} style={{ flex: 1, padding: 14, borderRadius: 12, background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}>
+            Download & Install
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <PermissionGuard>
           <AppRoutes />
+          <AppUpdateChecker />
         </PermissionGuard>
       </AuthProvider>
     </BrowserRouter>

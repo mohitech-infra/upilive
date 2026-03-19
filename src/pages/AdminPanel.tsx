@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import type { PlanPurchase, PaymentScanner, UserProfile, Transaction } from '../lib/supabase'
+import type { PlanPurchase, PaymentScanner, UserProfile, Transaction, AppUpdate } from '../lib/supabase'
 import {
     ChevronLeft, CreditCard, QrCode, Users, Zap, MessageCircle,
-    Smartphone, Check, X, ToggleLeft, ToggleRight, Upload, RefreshCw, BookOpen, Trash2
+    Smartphone, Check, X, ToggleLeft, ToggleRight, Upload, RefreshCw, BookOpen, Trash2, Download
 } from 'lucide-react'
 
-type Tab = 'purchases' | 'scanners' | 'users' | 'transactions' | 'support' | 'devices' | 'team' | 'notifications' | 'settings' | 'templates'
+type Tab = 'purchases' | 'scanners' | 'users' | 'transactions' | 'support' | 'devices' | 'team' | 'notifications' | 'settings' | 'templates' | 'withdrawals' | 'updates'
 type SupportMsg = { id: string; user_id: string; message: string; is_support: boolean; created_at: string; users?: { display_name?: string } }
 type Device = { id: string; user_id: string; device_name: string; last_ping: string | null; is_active: boolean; permissions_granted: { sms: boolean; notifications: boolean } }
+type WithdrawalRequest = { id: string; user_id: string; amount: number; upi_id: string; status: string; created_at: string; users?: { display_name?: string; email?: string } }
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode; color: string }[] = [
     { id: 'purchases', label: 'Purchases', icon: <CreditCard size={16} />, color: '#22c55e' },
@@ -23,6 +24,8 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode; color: string }[] =
     { id: 'notifications', label: 'Notifs', icon: <Zap size={16} />, color: '#f43f5e' },
     { id: 'settings', label: 'Settings', icon: <RefreshCw size={16} />, color: '#a855f7' },
     { id: 'templates', label: 'Templates', icon: <BookOpen size={16} />, color: '#10b981' },
+    { id: 'withdrawals', label: 'Withdraws', icon: <CreditCard size={16} />, color: '#ef4444' },
+    { id: 'updates', label: 'Updates', icon: <Download size={16} />, color: '#3b82f6' },
 ]
 
 // Which tabs each team role can access
@@ -30,7 +33,7 @@ const ROLE_TABS: Record<string, Tab[]> = {
     support:    ['support'],
     operations: ['purchases', 'scanners', 'transactions', 'devices'],
     moderator:  ['users', 'transactions', 'support', 'notifications'],
-    finance:    ['purchases', 'transactions', 'settings'],
+    finance:    ['purchases', 'transactions', 'settings', 'withdrawals'],
 }
 
 const S = {
@@ -62,6 +65,18 @@ export default function AdminPanel() {
     const [transactions, setTransactions] = useState<Transaction[]>([])
     const [supportMsgs, setSupportMsgs] = useState<SupportMsg[]>([])
     const [devices, setDevices] = useState<Device[]>([])
+    const [withdrawalsList, setWithdrawalsList] = useState<WithdrawalRequest[]>([])
+    // App Updates state
+    const [updatesList, setUpdatesList] = useState<AppUpdate[]>([])
+    const [updateFile, setUpdateFile] = useState<File | null>(null)
+    const [updateVersionName, setUpdateVersionName] = useState('')
+    const [updateVersionCode, setUpdateVersionCode] = useState('')
+    const [updateNotes, setUpdateNotes] = useState('')
+    const [updateMandatory, setUpdateMandatory] = useState(false)
+    const [updateLoading, setUpdateLoading] = useState(false)
+    const [updateMsg, setUpdateMsg] = useState('')
+    const updateFileRef = useRef<HTMLInputElement>(null)
+
     const [loading, setLoading] = useState(false)
     const [scannerName, setScannerName] = useState('')
     const [scannerUpi, setScannerUpi] = useState('')
@@ -163,20 +178,71 @@ export default function AdminPanel() {
             } else if (t === 'templates') {
                 const { data } = await supabase.from('overlay_templates').select('*').order('sort_order', { ascending: true })
                 if (data) setTemplatesList(data as OvTemplate[])
+            } else if (t === 'withdrawals') {
+                const { data } = await supabase.from('withdrawal_requests').select('*, users(display_name, email)').order('created_at', { ascending: false }).limit(100)
+                if (data) setWithdrawalsList(data as WithdrawalRequest[])
+            } else if (t === 'updates') {
+                const { data } = await supabase.from('app_updates').select('*').order('version_code', { ascending: false }).limit(50)
+                if (data) setUpdatesList(data as AppUpdate[])
             }
         } catch { }
         if (!silent) setLoading(false)
     }
 
     const approvePurchase = async (id: string, userId: string, planId: string) => {
+        const { data: purchase } = await supabase.from('plan_purchases').select('amount').eq('id', id).single()
+
         await supabase.from('plan_purchases').update({ status: 'approved' }).eq('id', id)
+        
+        const { data: u } = await supabase.from('users').select('referred_by').eq('id', userId).single()
         await supabase.from('users').update({ plan_id: planId }).eq('id', userId)
+
+        // Handle referral logic
+        if (u?.referred_by && purchase?.amount) {
+            // Get base plan price
+            const { data: planData } = await supabase.from('plans').select('price').eq('id', planId).maybeSingle()
+            const basePrice = planData?.price ? Number(planData.price) : Number(purchase.amount)
+
+            // Get commission %
+            const { data: s } = await supabase.from('app_settings').select('value').eq('key', 'referral_commission_percent').single()
+            const pct = s ? Number(s.value) : 25
+            const commission = Math.round(basePrice * (pct / 100))
+            
+            // Check if referral row already exists (if they just signed up, it might be pending)
+            const { data: refRow } = await supabase.from('referrals')
+                .select('id, status, commission_amount')
+                .eq('referee_id', userId)
+                .maybeSingle()
+                
+            if (refRow) {
+                await supabase.from('referrals').update({
+                    status: 'approved',
+                    commission_amount: (refRow.commission_amount || 0) + commission,
+                    plan_id: planId
+                }).eq('id', refRow.id)
+            } else {
+                // Manually insert
+                await supabase.from('referrals').insert({
+                    referrer_id: u.referred_by,
+                    referee_id: userId,
+                    plan_id: planId,
+                    commission_amount: commission,
+                    status: 'approved'
+                })
+            }
+        }
+
         loadTab('purchases')
     }
 
     const rejectPurchase = async (id: string) => {
         await supabase.from('plan_purchases').update({ status: 'rejected' }).eq('id', id)
         loadTab('purchases')
+    }
+
+    const updateWithdrawal = async (id: string, newStatus: string) => {
+        await supabase.from('withdrawal_requests').update({ status: newStatus, processed_at: new Date().toISOString() }).eq('id', id)
+        loadTab('withdrawals')
     }
 
     const deletePurchase = async (id: string, screenshotUrl: string | null) => {
@@ -779,6 +845,81 @@ export default function AdminPanel() {
                     </div>
                 )}
 
+                {/* ── UPDATES ── */}
+                {!loading && tab === 'updates' && (
+                    <div style={S.row}>
+                        <div style={S.card}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6', marginBottom: 14 }}>+ Upload New App Update</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <input value={updateVersionName} onChange={e => setUpdateVersionName(e.target.value)} placeholder="Version Name (e.g., 1.0.5)"
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: 14, fontFamily: 'var(--font-inter)', outline: 'none' }} />
+                                <input value={updateVersionCode} onChange={e => setUpdateVersionCode(e.target.value)} placeholder="Version Code (Numeric integer, e.g., 5)" type="number"
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: 14, fontFamily: 'var(--font-inter)', outline: 'none' }} />
+                                <textarea value={updateNotes} onChange={e => setUpdateNotes(e.target.value)} placeholder="Release notes..." rows={3}
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: 14, fontFamily: 'var(--font-inter)', outline: 'none', resize: 'vertical' }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+                                    <input type="checkbox" checked={updateMandatory} onChange={e => setUpdateMandatory(e.target.checked)} /> Mandatory update (locks users out until they update)
+                                </label>
+                                <input type="file" ref={updateFileRef} accept=".apk" style={{ display: 'none' }} onChange={e => setUpdateFile(e.target.files?.[0] ?? null)} />
+                                <button onClick={() => updateFileRef.current?.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: 10, padding: '14px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>
+                                    {updateFile ? `📦 ${updateFile.name}` : '📦 Select APK File (*.apk)'}
+                                </button>
+                                {updateMsg && <div style={{ fontSize: 13, color: updateMsg.startsWith('✓') ? '#22c55e' : '#ef4444' }}>{updateMsg}</div>}
+                                <button onClick={async () => {
+                                    if (!updateFile || !updateVersionName || !updateVersionCode) { setUpdateMsg('Fill required fields and select APK'); return }
+                                    setUpdateLoading(true); setUpdateMsg('')
+                                    const path = `releases/UPIAlert_v${updateVersionName}_${Date.now()}.apk`
+                                    const { error: upErr } = await supabase.storage.from('apk-updates').upload(path, updateFile, { upsert: true })
+                                    if (upErr) { setUpdateMsg('Upload failed: ' + upErr.message); setUpdateLoading(false); return }
+                                    const { data: { publicUrl } } = supabase.storage.from('apk-updates').getPublicUrl(path)
+                                    const { error: dbErr } = await supabase.from('app_updates').insert({
+                                        version_name: updateVersionName,
+                                        version_code: parseInt(updateVersionCode),
+                                        release_notes: updateNotes,
+                                        apk_url: publicUrl,
+                                        is_mandatory: updateMandatory
+                                    })
+                                    if (dbErr) setUpdateMsg('Database error: ' + dbErr.message)
+                                    else {
+                                        setUpdateMsg('✓ Update published!')
+                                        // Also insert push notification
+                                        await supabase.from('app_notifications').insert({ title: 'New App Update Available (v' + updateVersionName + ')', message: 'Tap to install the new update with new features and improvements.', type: 'update' })
+                                        setUpdateFile(null); setUpdateVersionName(''); setUpdateVersionCode(''); setUpdateNotes('');
+                                        loadTab('updates')
+                                    }
+                                    setUpdateLoading(false)
+                                }} disabled={updateLoading} style={{ background: 'linear-gradient(135deg,#3b82f6,#2563eb)', border: 'none', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                                    {updateLoading ? <div className="spinner" /> : <><Upload size={15} /> Publish Update</>}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* List of updates */}
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>{updatesList.length} PREVIOUS UPDATES</div>
+                        {updatesList.map(u => (
+                            <div key={u.id} style={S.card}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>v{u.version_name} <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>(Code: {u.version_code})</span></div>
+                                    {u.is_mandatory && badge('Mandatory', '#ef4444')}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, whiteSpace: 'pre-line' }}>{u.release_notes || 'No release notes.'}</div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <a href={u.apk_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, border: '1px solid rgba(59,130,246,0.3)' }}>Download APK</a>
+                                    <button onClick={async () => {
+                                        if(!window.confirm('Delete this update?')) return
+                                        await supabase.from('app_updates').delete().eq('id', u.id)
+                                        try {
+                                            const pathUrl = u.apk_url.split('/apk-updates/')[1]
+                                            if (pathUrl) await supabase.storage.from('apk-updates').remove([pathUrl])
+                                        } catch (e) {}
+                                        loadTab('updates')
+                                    }} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: '#ef4444', cursor: 'pointer' }}>Delete</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* ── SETTINGS ── */}
                 {!loading && tab === 'settings' && (
                     <div style={S.row}>
@@ -909,6 +1050,71 @@ export default function AdminPanel() {
                             </div>
                         ))}
                         {templatesList.length === 0 && <div style={{ ...S.card, textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No templates yet</div>}
+                    </div>
+                )}
+
+                {/* ── WITHDRAWALS ── */}
+                {!loading && tab === 'withdrawals' && (
+                    <div style={S.row}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                            {withdrawalsList.filter(w => w.status === 'pending').length} PENDING · {withdrawalsList.length} TOTAL
+                        </div>
+                        {withdrawalsList.length === 0 && <div style={{ ...S.card, textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>No withdrawal requests yet</div>}
+                        {withdrawalsList.map(w => (
+                            <div key={w.id} style={{ ...S.card, borderLeft: `3px solid ${w.status === 'paid' ? '#22c55e' : w.status === 'rejected' ? '#ef4444' : '#f59e0b'}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                                    <div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>
+                                            {w.users?.display_name ?? w.users?.email?.split('@')[0] ?? 'User'}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                            {w.users?.email ?? ''}
+                                        </div>
+                                    </div>
+                                    {badge(w.status, w.status === 'paid' ? '#22c55e' : w.status === 'rejected' ? '#ef4444' : '#f59e0b')}
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+                                    <div>
+                                        <div style={S.label}>AMOUNT</div>
+                                        <div style={{ ...S.val, color: '#22c55e' }}>₹{Number(w.amount).toLocaleString('en-IN')}</div>
+                                    </div>
+                                    <div>
+                                        <div style={S.label}>DATE</div>
+                                        <div style={S.val}>{new Date(w.created_at).toLocaleDateString('en-IN')}</div>
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: w.status === 'pending' || w.status === 'processed' ? 12 : 0 }}>
+                                    <div style={S.label}>UPI ID</div>
+                                    <div style={{ ...S.val, fontFamily: 'monospace', fontSize: 13, letterSpacing: 0.5, color: '#a855f7' }}>{w.upi_id || '—'}</div>
+                                </div>
+                                {w.status === 'pending' && (
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button
+                                            onClick={() => updateWithdrawal(w.id, 'processed')}
+                                            style={{ flex: 1, background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                        >
+                                            <Check size={14} /> Mark Processed
+                                        </button>
+                                        <button
+                                            onClick={() => updateWithdrawal(w.id, 'rejected')}
+                                            style={{ flex: 1, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                        >
+                                            <X size={14} /> Reject
+                                        </button>
+                                    </div>
+                                )}
+                                {w.status === 'processed' && (
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button
+                                            onClick={() => updateWithdrawal(w.id, 'paid')}
+                                            style={{ flex: 1, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.35)', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, color: '#22c55e', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                        >
+                                            <Check size={14} /> Mark Paid
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
