@@ -32,6 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', authUser.id)
             .single()
         if (data) {
+            // Check for plan expiration
+            if (data.plan_expires_at && new Date(data.plan_expires_at) < new Date()) {
+                // Plan expired! Auto-downgrade to free
+                await supabase.from('users').update({ plan_id: 'free', plan_expires_at: null }).eq('id', authUser.id)
+                data.plan_id = 'free'
+                data.plan_expires_at = null
+            }
+
             // Enrich display_name from OAuth metadata if the DB row has none
             if (!data.display_name || data.display_name.trim() === '') {
                 const meta = authUser.user_metadata ?? {}

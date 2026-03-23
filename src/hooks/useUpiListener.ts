@@ -63,23 +63,32 @@ export function useUpiListener() {
 
             // 4. Listen for detected UPI payments
             const handle = await UpiListener.addListener('upiPaymentDetected', async (data) => {
+                console.log('[UpiListener] upiPaymentDetected:', JSON.stringify(data))
                 try {
                     // Send to Edge Function which parses + saves + triggers overlay
-                    await fetch(`${SUPABASE_URL}/functions/v1/parse-upi-sms`, {
+                    const res = await fetch(`${SUPABASE_URL}/functions/v1/parse-upi-sms`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'x-device-token': token },
                         body: JSON.stringify({
                             sms_text: data.raw_text,
                             device_token: token,
+                            pre_parsed: data,
                         }),
                     })
+
+                    const resBody = await res.json().catch(() => ({}))
+                    if (!res.ok) {
+                        console.error('[UpiListener] Edge function error:', res.status, JSON.stringify(resBody))
+                    } else {
+                        console.log('[UpiListener] Edge function success:', JSON.stringify(resBody))
+                    }
 
                     // Update last_ping
                     await supabase.from('device_connections')
                         .update({ last_ping: new Date().toISOString() })
                         .eq('device_token', token)
                 } catch (e) {
-                    console.error('UpiListener send error:', e)
+                    console.error('[UpiListener] Send error:', e)
                 }
             })
 

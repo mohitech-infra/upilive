@@ -54,9 +54,10 @@ public class UpiListenerPlugin extends Plugin {
 
     /** Called by UpiNotificationListener when a notification arrives from a UPI app */
     public void onNotificationText(String text, String packageName) {
+        android.util.Log.d("UpiAlert", "onNotificationText pkg=" + packageName + " text=" + text);
         JSObject parsed = tryParseUpi(text);
         if (parsed != null) {
-            // Tag the source app
+            // Override source with the detected app package
             if (packageName != null) {
                 if (packageName.contains("phonepe")) parsed.put("source", "phonePe");
                 else if (packageName.contains("nbu.paisa")) parsed.put("source", "gPay");
@@ -70,16 +71,6 @@ public class UpiListenerPlugin extends Plugin {
     private BroadcastReceiver smsReceiver;
     private boolean listening = false;
 
-    // ───── UPI amount regex patterns ─────
-    private static final Pattern[] UPI_PATTERNS = {
-        // PhonePe / Paytm: received Rs.100 from Name
-        Pattern.compile("(?:received|credited)[\\s\\S]*?(?:Rs\\.?|INR|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?).*?(?:from|by)\\s+([\\w\\s.]{2,40})", Pattern.CASE_INSENSITIVE),
-        // GPay: Name paid you Rs.100
-        Pattern.compile("([\\w\\s.]{2,40})\\s+paid\\s+you\\s+(?:Rs\\.?|INR|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE),
-        // Bank SMS: credited with INR 100
-        Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s+(?:received|credited)", Pattern.CASE_INSENSITIVE),
-    };
-
     // ───── Start listening ─────
     @PluginMethod
     public void startListening(PluginCall call) {
@@ -92,8 +83,9 @@ public class UpiListenerPlugin extends Plugin {
                 SmsMessage[] msgs = Telephony.Sms.Intents.getMessagesFromIntent(intent);
                 if (msgs == null) return;
                 StringBuilder full = new StringBuilder();
-                for (SmsMessage m : msgs) full.append(m.getMessageBody());
-                String text = full.toString();
+                for (SmsMessage m : msgs) full.append(m.getMessageBody()).append(" ");
+                String text = full.toString().trim();
+                android.util.Log.d("UpiAlert", "SMS received: " + text);
                 JSObject parsed = tryParseUpi(text);
                 if (parsed != null) {
                     notifyListeners("upiPaymentDetected", parsed);
@@ -105,6 +97,7 @@ public class UpiListenerPlugin extends Plugin {
         filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         getContext().registerReceiver(smsReceiver, filter);
         listening = true;
+        android.util.Log.d("UpiAlert", "startListening: SMS receiver registered");
         call.resolve();
     }
 
@@ -115,25 +108,25 @@ public class UpiListenerPlugin extends Plugin {
             smsReceiver = null;
         }
         listening = false;
-        call.resolve();
+        if (call != null) call.resolve();
     }
 
     @PluginMethod
     public void checkPermissions(PluginCall call) {
         boolean sms = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.RECEIVE_SMS)
                 == PackageManager.PERMISSION_GRANTED;
-                
+
         boolean push = true;
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             push = ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS)
                     == PackageManager.PERMISSION_GRANTED;
         }
-                
+
         // Notification listener check via NotificationListenerService
         String enabledListeners = android.provider.Settings.Secure.getString(
                 getContext().getContentResolver(), "enabled_notification_listeners");
         boolean notif = enabledListeners != null && enabledListeners.contains(getContext().getPackageName());
-        
+
         JSObject result = new JSObject();
         result.put("sms", sms);
         result.put("push", push);
@@ -143,7 +136,6 @@ public class UpiListenerPlugin extends Plugin {
 
     @PluginMethod
     public void requestPermissions(PluginCall call) {
-        // Request both SMS and Push Notifications where applicable
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             requestPermissionForAliases(new String[]{"sms", "push"}, call, "permissionsCallback");
         } else {
@@ -158,7 +150,6 @@ public class UpiListenerPlugin extends Plugin {
 
     @PluginMethod
     public void getDeviceToken(PluginCall call) {
-        // Device token stored in SharedPreferences — generated on first run
         android.content.SharedPreferences prefs = getContext().getSharedPreferences("upialert", Context.MODE_PRIVATE);
         String token = prefs.getString("device_token", null);
         if (token == null) {
@@ -172,52 +163,83 @@ public class UpiListenerPlugin extends Plugin {
 
     // ───── UPI parsing helper ─────
     private JSObject tryParseUpi(String text) {
-        // Simple amount extractor
-        Pattern amtPattern = Pattern.compile("(?:Rs\\.?|INR|₹|₹\\s?)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
-        Matcher amtMatcher = amtPattern.matcher(text);
-        if (!amtMatcher.find()) {
-            android.util.Log.d("UpiAlert", "No amount matched in text: " + text);
+        if (text == null || text.trim().isEmpty()) return null;
+
+        // ── Step 1: Check if this looks like a payment message at all ──
+        String lower = text.toLowerCase();
+        boolean looksLikePayment =
+            lower.contains("received") || lower.contains("credited") ||
+            lower.contains("paid you") || lower.contains("deposited") ||
+            lower.contains("cr:") || lower.contains("cr :");
+        if (!looksLikePayment) {
+            android.util.Log.d("UpiAlert", "Skipping (no payment keywords): " + text.substring(0, Math.min(80, text.length())));
             return null;
         }
 
-        String amountStr = amtMatcher.group(1).replace(",", "");
-        double amount;
-        try { amount = Double.parseDouble(amountStr); } catch (NumberFormatException e) { 
-            android.util.Log.d("UpiAlert", "Failed to parse amount: " + amountStr);
-            return null; 
+        // ── Step 2: Extract amount ──
+        // Try currency prefix first: Rs., INR, ₹
+        double amount = 0;
+        Pattern amtWithPrefix = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
+        Matcher amtMatcher = amtWithPrefix.matcher(text);
+
+        // Then try bank style "Amount:100" or "Cr:100"
+        Pattern amtBankStyle = Pattern.compile("(?:Amount[:\\s]+|Cr[:\\s]+|amount[:\\s]+)([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
+
+        if (amtMatcher.find()) {
+            try { amount = Double.parseDouble(amtMatcher.group(1).replace(",", "")); } catch (NumberFormatException ignored) {}
+        } else {
+            Matcher bankMatcher = amtBankStyle.matcher(text);
+            if (bankMatcher.find()) {
+                try { amount = Double.parseDouble(bankMatcher.group(1).replace(",", "")); } catch (NumberFormatException ignored) {}
+            }
         }
+
         if (amount <= 0) {
-            android.util.Log.d("UpiAlert", "Amount is <= 0: " + amountStr);
+            android.util.Log.d("UpiAlert", "No valid amount found in: " + text.substring(0, Math.min(100, text.length())));
             return null;
         }
 
-        // Donor name
+        // ── Step 3: Extract donor name ──
         String donorName = "Anonymous";
-        Pattern namePattern = Pattern.compile("(?:from|by)\\s+([\\w\\s.]{2,40})(?:\\s+via|\\s+on|\\n|$)", Pattern.CASE_INSENSITIVE);
+        // Try "from NAME via/on" or "by NAME"
+        Pattern namePattern = Pattern.compile("(?:from|by)\\s+([\\w\\s.]{2,50})(?:\\s+via|\\s+on|\\s+through|\\.|,|\\n|$)", Pattern.CASE_INSENSITIVE);
         Matcher nameMatcher = namePattern.matcher(text);
-        if (nameMatcher.find()) donorName = nameMatcher.group(1).trim();
+        if (nameMatcher.find()) {
+            donorName = nameMatcher.group(1).trim();
+        } else {
+            // Try "NAME paid you"
+            Pattern paidPattern = Pattern.compile("^([\\w\\s.]{2,40})\\s+paid\\s+you", Pattern.CASE_INSENSITIVE);
+            Matcher paidMatcher = paidPattern.matcher(text.trim());
+            if (paidMatcher.find()) {
+                donorName = paidMatcher.group(1).trim();
+            }
+        }
 
-        // UPI ref / UTR
+        // ── Step 4: Extract UTR / Ref ──
         String upiRef = "";
-        Pattern refPattern = Pattern.compile("(?:UTR|Ref(?:erence)?(?:\\s+No\\.?)?|Txn\\s+ID)[:\\s]*([A-Z0-9]{10,22})", Pattern.CASE_INSENSITIVE);
+        Pattern refPattern = Pattern.compile(
+            "(?:UTR|UPI\\s*Ref\\s*(?:No\\.?)?|Ref(?:erence)?(?:\\s+No\\.?)?|Txn\\s*(?:ID|No\\.?)?)[:\\s]*([A-Z0-9]{8,22})",
+            Pattern.CASE_INSENSITIVE
+        );
         Matcher refMatcher = refPattern.matcher(text);
         if (refMatcher.find()) upiRef = refMatcher.group(1);
 
-        // Source app detection
+        // ── Step 5: Detect source app ──
         String source = "bank";
-        if (text.toLowerCase().contains("phonepe")) source = "phonePe";
-        else if (text.toLowerCase().contains("google pay") || text.toLowerCase().contains("gpay")) source = "gPay";
-        else if (text.toLowerCase().contains("paytm")) source = "paytm";
-        else if (text.toLowerCase().contains("bhim")) source = "bhim";
-        else if (text.toLowerCase().contains("fampay") || text.toLowerCase().contains("famapp")) source = "famPay";
+        if (lower.contains("phonepe")) source = "phonePe";
+        else if (lower.contains("google pay") || lower.contains("gpay")) source = "gPay";
+        else if (lower.contains("paytm")) source = "paytm";
+        else if (lower.contains("bhim")) source = "bhim";
+        else if (lower.contains("fampay") || lower.contains("famapp")) source = "famPay";
+        else if (lower.contains("amazon pay") || lower.contains("amazonpay")) source = "amazonPay";
 
         JSObject obj = new JSObject();
         obj.put("amount", amount);
-        obj.put("donor_name", donorName);
+        obj.put("donor_name", donorName.length() > 60 ? donorName.substring(0, 60) : donorName);
         obj.put("upi_ref", upiRef);
         obj.put("source", source);
-        obj.put("raw_text", text.length() > 200 ? text.substring(0, 200) : text);
-        android.util.Log.d("UpiAlert", "Parsed match! " + obj.toString());
+        obj.put("raw_text", text.length() > 300 ? text.substring(0, 300) : text);
+        android.util.Log.d("UpiAlert", "✅ Parsed UPI payment: amount=" + amount + " from=" + donorName + " src=" + source);
         return obj;
     }
 
@@ -227,11 +249,6 @@ public class UpiListenerPlugin extends Plugin {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
         call.resolve();
-    }
-
-    @PermissionCallback
-    private void smsPermissionCallback(PluginCall call) {
-        checkPermissions(call);
     }
 
     @Override

@@ -31,7 +31,7 @@
   --font-inter: 'Inter', sans-serif;
   --radius: 16px;
   --radius-sm: 8px;
-  --nav-height: 64px;
+  --nav-height: 76px;
 }
 
 html,
@@ -229,13 +229,14 @@ textarea.input {
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
   background: rgba(5, 5, 8, 0.95);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-around;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: 10px;
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom);
 }

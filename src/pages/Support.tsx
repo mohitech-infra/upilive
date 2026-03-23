@@ -71,7 +71,9 @@ export default function Support() {
                 message: msg,
                 is_support: false,
             })
-        } catch (_) { }
+        } catch (err) { 
+            console.error('Support message submission failed:', err)
+        }
         setSending(false)
     }
 

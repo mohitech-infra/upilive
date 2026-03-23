@@ -321,10 +321,15 @@ export default function Dashboard() {
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                 <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#f59e0b' }}>
                                     {(profile?.plan_id ?? 'free').toUpperCase()} PLAN
                                 </div>
+                                {profile?.plan_expires_at && (
+                                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                                        Ends: {new Date(profile.plan_expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                    </div>
+                                )}
                                 {profile?.plan_id !== 'lifetime' && (
                                     <button
                                         onClick={() => { setMenuOpen(false); navigate('/pricing') }}

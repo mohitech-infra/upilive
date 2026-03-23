@@ -23,18 +23,9 @@ const ANIMATIONS: Record<string, string> = {
 
 // ─── IFRAME ALERT COMPONENT ─────────────────────────────
 function IframeAlert({ tx, templateCode }: { tx: Transaction, templateCode: string }) {
-    const [html, setHtml] = useState('')
     const [exiting, setExiting] = useState(false)
 
     useEffect(() => {
-        const parsed = templateCode
-            .replace(/\{\{donor_name\}\}/g, tx.donor_name)
-            .replace(/\{\{amount\}\}/g, tx.amount.toLocaleString('en-IN'))
-            .replace(/\{\{message\}\}/g, tx.message || '')
-            .replace(/\{\{source\}\}/g, 'UPI')
-            .replace(/\{\{utr\}\}/g, (tx as any).utr || '')
-        setHtml(parsed)
-
         // Give it 4.5s before we unmount it
         const t = setTimeout(() => setExiting(true), 4500)
         return () => clearTimeout(t)
@@ -42,9 +33,16 @@ function IframeAlert({ tx, templateCode }: { tx: Transaction, templateCode: stri
 
     if (exiting) return null
 
+    const parsedHtml = templateCode
+        .replace(/\{\{donor_name\}\}/g, tx.donor_name)
+        .replace(/\{\{amount\}\}/g, tx.amount.toLocaleString('en-IN'))
+        .replace(/\{\{message\}\}/g, tx.message || '')
+        .replace(/\{\{source\}\}/g, 'UPI')
+        .replace(/\{\{utr\}\}/g, (tx as any).utr || '')
+
     return (
         <iframe
-            srcDoc={html}
+            srcDoc={parsedHtml}
             style={{
                 width: 600, height: 400, border: 'none',
                 overflow: 'hidden', background: 'transparent'

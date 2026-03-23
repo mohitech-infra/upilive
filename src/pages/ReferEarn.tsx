@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Referral, WithdrawalRequest } from '../lib/supabase'
-import { Copy, Check, Share2 } from 'lucide-react'
+import { Copy, Check, Share2, Wallet, Banknote, Clock, CreditCard, ArrowRight } from 'lucide-react'
 
 export default function ReferEarn() {
     const { profile } = useAuth()
@@ -65,6 +65,10 @@ export default function ReferEarn() {
     const approvedEarnings = referrals.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.commission_amount), 0)
     const paidEarnings = referrals.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.commission_amount), 0)
     const totalEarned = approvedEarnings + paidEarnings
+    
+    // Wallet Metrics
+    const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending').reduce((s, w) => s + Number(w.amount), 0)
+    const totalPaid = withdrawals.filter(w => w.status === 'paid' || w.status === 'processed').reduce((s, w) => s + Number(w.amount), 0)
     const withdrawableAmount = approvedEarnings - withdrawals.filter(w => w.status !== 'rejected').reduce((s, w) => s + Number(w.amount), 0)
 
     const handleWithdraw = async () => {
@@ -213,6 +217,66 @@ export default function ReferEarn() {
                 </div>
             </div>
 
+            {/* Wallet Dashboard */}
+            <div style={{ padding: '0 16px', marginBottom: 24 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Wallet size={18} color="#3b82f6" /> Digital Wallet
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #1e1e2d 0%, #151521 100%)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: '24px', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                    
+                    {/* Decorative blobs */}
+                    <div style={{ position: 'absolute', top: -50, right: -50, width: 150, height: 150, background: 'rgba(59,130,246,0.1)', borderRadius: '50%', filter: 'blur(30px)' }} />
+                    <div style={{ position: 'absolute', bottom: -30, left: -30, width: 100, height: 100, background: 'rgba(34,197,94,0.1)', borderRadius: '50%', filter: 'blur(20px)' }} />
+
+                    {/* Main Balance */}
+                    <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                        <div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 500 }}>Available Balance</div>
+                            <div style={{ fontSize: 36, fontWeight: 900, color: '#fff', fontFamily: 'var(--font-orbitron)', letterSpacing: 1, display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                                <span style={{ fontSize: 20, color: '#22c55e' }}>₹</span>{Math.max(0, withdrawableAmount).toLocaleString('en-IN')}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setWithdrawOpen(true)}
+                            disabled={withdrawableAmount < 100}
+                            style={{ 
+                                background: withdrawableAmount >= 100 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'rgba(255,255,255,0.05)', 
+                                border: withdrawableAmount >= 100 ? 'none' : '1px solid rgba(255,255,255,0.1)', 
+                                borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 700, 
+                                color: withdrawableAmount >= 100 ? '#000' : 'var(--text-muted)', 
+                                cursor: withdrawableAmount >= 100 ? 'pointer' : 'not-allowed', 
+                                display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s',
+                                boxShadow: withdrawableAmount >= 100 ? '0 4px 12px rgba(34,197,94,0.3)' : 'none'
+                            }}
+                        >
+                            Withdraw <ArrowRight size={14} />
+                        </button>
+                    </div>
+
+                    {/* Mini Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, position: 'relative', zIndex: 10, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+                                <Banknote size={12} /> Total Earned
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>₹{totalEarned.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#f59e0b', marginBottom: 4 }}>
+                                <Clock size={12} /> Pending
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>₹{pendingWithdrawals.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#3b82f6', marginBottom: 4 }}>
+                                <CreditCard size={12} /> Paid Out
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>₹{totalPaid.toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Referral History */}
             {referrals.length > 0 && (
                 <div style={{ padding: '0 16px', marginBottom: 20 }}>
@@ -246,19 +310,12 @@ export default function ReferEarn() {
                 </div>
             )}
 
-            {/* Note & Action */}
-            <div style={{ padding: '0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: 6, flex: 1 }}>
+            {/* Note */}
+            <div style={{ padding: '0 16px', marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: 6, background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '12px' }}>
                     <span style={{ fontSize: 14, flexShrink: 0 }}>ⓘ</span>
                     <span>Commissions are paid out within 24-48 hours via UPI. Minimum withdrawal: ₹100</span>
                 </div>
-                <button
-                    onClick={() => setWithdrawOpen(true)}
-                    disabled={withdrawableAmount < 100}
-                    style={{ background: withdrawableAmount >= 100 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: withdrawableAmount >= 100 ? '#000' : 'var(--text-muted)', cursor: withdrawableAmount >= 100 ? 'pointer' : 'not-allowed', flexShrink: 0, marginLeft: 12 }}
-                >
-                    Withdraw
-                </button>
             </div>
 
             {/* Withdraw Modal */}

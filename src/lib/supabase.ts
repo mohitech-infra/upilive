@@ -101,7 +101,7 @@ export type WithdrawalRequest = {
   user_id: string
   amount: number
   upi_id: string
-  status: 'pending' | 'approved' | 'rejected' | 'paid'
+  status: 'pending' | 'approved' | 'rejected' | 'paid' | 'processed'
   admin_note: string | null
   created_at: string
   processed_at: string | null

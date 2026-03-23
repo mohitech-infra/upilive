@@ -81,8 +81,8 @@ export default function Payment() {
                     status: 'pending',
                 })
             }
-        } catch (_) {
-            // Ignore errors — always show success, admin will verify via UTR
+        } catch (err) {
+            console.error('Payment submission fallback error:', err)
         } finally {
             setSubmitting(false)
             setSubmitted(true)

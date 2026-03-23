@@ -28,6 +28,52 @@ export function useLiveNotifications() {
                     visibility: 1,
                     vibration: true
                 })
+                
+                // --- SCHEDULE EXPIRATION REMINDERS ---
+                if (profile.plan_expires_at) {
+                    const expiresStr = profile.plan_expires_at
+                    const expiresDate = new Date(expiresStr)
+                    const now = new Date()
+
+                    // Cancel prev ones first to avoid duplicates
+                    const idsToCancel = [5001, 5002, 5003, 5004, 5005].map(id => ({ id }))
+                    try {
+                        await LocalNotifications.cancel({ notifications: idsToCancel })
+                    } catch (e) { /* ignore if none exist */ }
+
+                    const notifsToSchedule = []
+                    // Schedule 5 days before, 4 days before... up to 1 day before
+                    for (let daysBefore = 1; daysBefore <= 5; daysBefore++) {
+                        // Subtract days
+                        const notifyDate = new Date(expiresDate.getTime() - (daysBefore * 24 * 60 * 60 * 1000))
+                        // Set the time of the reminder to a reasonable hour locally (e.g. 10 AM)
+                        notifyDate.setHours(10, 0, 0, 0)
+
+                        if (notifyDate > now) {
+                            notifsToSchedule.push({
+                                title: 'Plan Expiring Soon!',
+                                body: `Your premium plan expires in ${daysBefore} day(s). Renew now to keep enjoying unlimited alerts!`,
+                                id: 5000 + daysBefore, // Deterministic ID per day
+                                schedule: { at: notifyDate },
+                                channelId: 'payments'
+                            })
+                        }
+                    }
+
+                    if (notifsToSchedule.length > 0) {
+                        try {
+                            await LocalNotifications.schedule({ notifications: notifsToSchedule })
+                        } catch (e) {
+                            console.error('Failed to schedule expiration notifications:', e)
+                        }
+                    }
+                } else {
+                    // No expiration (lifetime or free), cancel any lingering ones
+                    const idsToCancel = [5001, 5002, 5003, 5004, 5005].map(id => ({ id }))
+                    try {
+                        await LocalNotifications.cancel({ notifications: idsToCancel })
+                    } catch (e) {}
+                }
             }
         }
 

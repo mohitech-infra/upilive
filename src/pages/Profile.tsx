@@ -105,6 +105,11 @@ export default function Profile() {
                     <div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>Current Plan</div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{profile?.plan_id?.toUpperCase() ?? 'FREE'}</div>
+                        {profile?.plan_expires_at && (
+                            <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>
+                                Expires: {new Date(profile.plan_expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </div>
+                        )}
                     </div>
                     <button onClick={() => navigate('/pricing')} style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '8px 14px', color: '#a855f7', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                         Upgrade

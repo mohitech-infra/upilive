@@ -194,8 +194,20 @@ export default function AdminPanel() {
 
         await supabase.from('plan_purchases').update({ status: 'approved' }).eq('id', id)
         
+        // Calculate expiration date
+        let expiresAt: string | null = null
+        const now = new Date()
+        if (planId === 'starter') now.setDate(now.getDate() + 30)
+        else if (planId === 'pro') now.setDate(now.getDate() + 90)
+        else if (planId === 'ultra') now.setDate(now.getDate() + 240)
+        else if (planId === 'annual') now.setDate(now.getDate() + 365)
+        
+        if (['starter', 'pro', 'ultra', 'annual'].includes(planId)) {
+             expiresAt = now.toISOString()
+        }
+
         const { data: u } = await supabase.from('users').select('referred_by').eq('id', userId).single()
-        await supabase.from('users').update({ plan_id: planId }).eq('id', userId)
+        await supabase.from('users').update({ plan_id: planId, plan_expires_at: expiresAt }).eq('id', userId)
 
         // Handle referral logic
         if (u?.referred_by && purchase?.amount) {
@@ -241,7 +253,11 @@ export default function AdminPanel() {
     }
 
     const updateWithdrawal = async (id: string, newStatus: string) => {
-        await supabase.from('withdrawal_requests').update({ status: newStatus, processed_at: new Date().toISOString() }).eq('id', id)
+        const { error } = await supabase.from('withdrawal_requests').update({ status: newStatus }).eq('id', id)
+        if (error) {
+            console.error('Update withdrawal error:', error)
+            alert('Failed to update: ' + error.message)
+        }
         loadTab('withdrawals')
     }
 

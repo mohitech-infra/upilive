@@ -181,7 +181,7 @@ export default function TemplateDesigner() {
                 const cssMatch = data.full_code.match(/<style>([\s\S]*?)<\/style>/)
                 if (cssMatch) {
                     // strip out the auto-injected bg
-                    let rawCss = cssMatch[1].replace(/html, body \{ width:100%; height:100%; margin:0; padding:0;.*?\]?\s*\}\n?/s, '')
+                    const rawCss = cssMatch[1].replace(/html, body \{ width:100%; height:100%; margin:0; padding:0;.*?\]?\s*\}\n?/s, '')
                     setCssCode(rawCss.trim())
                 }
 
